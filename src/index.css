@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&display=swap');
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .high-quality-rendering {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+  }
+
+  /* Hero levitate shadow effect */
+  .hero-float {
+    filter: drop-shadow(0 40px 60px rgba(0,0,0,0.22)) drop-shadow(0 10px 20px rgba(0,0,0,0.12));
+    will-change: transform;
+  }
+  .hero-ground-shadow {
+    background: radial-gradient(ellipse 70% 18px at 50% 100%, rgba(0,0,0,0.2), transparent 100%);
+  }
+
+  /* Glass card effect */
+  .glass-card {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.65);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  }
+
+  /* GPU accelerated animations */
+  .bento-hover {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    will-change: transform;
+  }
+  .bento-hover:hover {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow: 0 20px 60px -10px rgba(0,0,0,0.12);
+  }
+
+  /* Float animation for hero product image */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-14px); }
+  }
+
+  /* Prevent FOUC on modal open */
+  .modal-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
