@@ -1,24 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, ChevronRight } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import PriceDisplay from './PriceDisplay';
-
-// SPRING ANIMATION PHYSICS
-const SPRING = { type: 'spring', stiffness: 300, damping: 22 };
+import { SPRING, formatWhatsAppNumber } from '../lib/utils';
 
 // ============================================================================
-// LOGICA DE CONTACTO WHATSAPP HIGH-END
-// ============================================================================
-const formatWhatsAppNumber = (phone) => {
-  if (!phone) return "";
-  let cleaned = phone.replace(/\D/g, ''); // Eliminar caracteres no numéricos
-  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1); // Quitar '0' inicial si existe
-  if (!cleaned.startsWith('58')) cleaned = '58' + cleaned; // Forzar prefijo 58
-  return cleaned;
-};
-
-// ============================================================================
-// PRODUCT CARD DIRECTAMENTE EXTRAIDO DE LA VISTA PRINCIPAL
+// PRODUCT CARD — Componente reutilizable de tarjeta de producto
 // ============================================================================
 export default function ProductCard({ 
   product, 

@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import PocketBase from 'pocketbase';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, ArrowLeft, Filter } from 'lucide-react';
+import pb from '../lib/pocketbase';
+import { getImageUrl } from '../lib/utils';
 import ProductCard from '../components/ProductCard';
-
-const pb = new PocketBase('http://localhost:8090');
-
-const getImageUrl = (record, filename, thumb = '0x0') => {
-  if (!record || !filename) return null;
-  return pb.files.getURL(record, filename, { thumb });
-};
+import PriceDisplay from '../components/PriceDisplay';
+import SafeImage from '../components/SafeImage';
 
 const IconInstagram = ({ size = 24, className = "" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
@@ -19,35 +16,22 @@ const IconFacebook = ({ size = 24, className = "" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
 );
 
-function SafeImage({ src, alt, className }) {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-
-  if (!src || error) return <div className={`flex items-center justify-center bg-slate-100 dark:bg-slate-800 ${className}`}></div>;
-
-  return (
-    <div className={`relative overflow-hidden ${className}`}>
-      {!loaded && <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 animate-pulse"></div>}
-      <img src={src} alt={alt} className={`w-full h-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`} onLoad={() => setLoaded(true)} onError={() => setError(true)} />
-    </div>
-  );
-}
-
-export default function StoreCatalogView({ storeSlug, storeId, onSelectProduct }) {
+export default function StoreCatalogView() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState('Todos');
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
     const loadStoreData = async () => {
       try {
         let storeRecord;
-        if (storeSlug) {
-          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${storeSlug}"`);
-        } else if (storeId) {
-          storeRecord = await pb.collection('stores').getOne(storeId);
+        if (slug) {
+          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`);
         } else {
-          console.error('StoreCatalogView: No storeSlug or storeId provided');
+          console.error('StoreCatalogView: No slug provided');
           return;
         }
         const productsRecord = await pb.collection('products').getFullList({ 
@@ -57,12 +41,11 @@ export default function StoreCatalogView({ storeSlug, storeId, onSelectProduct }
         setStore(storeRecord);
         setProducts(productsRecord);
       } catch (error) {
-        console.error('Error exacto de PB (StoreCatalog):', error.response?.data);
         console.error('Error al cargar la tienda:', error);
       }
     };
     loadStoreData();
-  }, [storeSlug, storeId]);
+  }, [slug]);
 
   const availableCategories = ['Todos', ...new Set(products.map(p => p.category).filter(Boolean))];
 
@@ -80,7 +63,7 @@ export default function StoreCatalogView({ storeSlug, storeId, onSelectProduct }
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900" />
         )}
-        <button onClick={() => window.location.hash = '#/'} className="absolute top-4 left-4 md:top-8 md:left-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/20 transition-all backdrop-blur-md z-20">
+        <button onClick={() => navigate('/')} className="absolute top-4 left-4 md:top-8 md:left-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/20 transition-all backdrop-blur-md z-20">
           <ArrowLeft size={16}/> Volver
         </button>
       </div>
@@ -96,58 +79,35 @@ export default function StoreCatalogView({ storeSlug, storeId, onSelectProduct }
               </div>
             )}
           </div>
-          
           <div className="flex-1 text-center md:text-left mb-2 md:mb-4">
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
-              {store.name}
-            </h1>
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">{store.name}</h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
-                {store.category}
-              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">{store.category}</span>
               {store.location && (
-                <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium">
-                  <MapPin size={16}/> {store.location}
-                </span>
+                <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium"><MapPin size={16}/> {store.location}</span>
               )}
             </div>
           </div>
-          
           <div className="flex gap-3 mb-2 md:mb-4">
             {store.instagram && (
-              <a href={`https://instagram.com/${store.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-500 transition-colors p-2 bg-white rounded-full shadow-sm border border-slate-100">
-                <IconInstagram size={24} />
-              </a>
+              <a href={`https://instagram.com/${store.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-500 transition-colors p-2 bg-white rounded-full shadow-sm border border-slate-100"><IconInstagram size={24} /></a>
             )}
             {store.facebook && (
-              <a href={store.facebook.startsWith('http') ? store.facebook : `https://facebook.com/${store.facebook}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-500 transition-colors p-2 bg-white rounded-full shadow-sm border border-slate-100">
-                <IconFacebook size={24} />
-              </a>
+              <a href={store.facebook.startsWith('http') ? store.facebook : `https://facebook.com/${store.facebook}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-500 transition-colors p-2 bg-white rounded-full shadow-sm border border-slate-100"><IconFacebook size={24} /></a>
             )}
           </div>
         </div>
-
         {store.description && (
-          <p className="text-slate-600 text-sm md:text-base mb-8 max-w-3xl text-center md:text-left leading-relaxed">
-            {store.description}
-          </p>
+          <p className="text-slate-600 text-sm md:text-base mb-8 max-w-3xl text-center md:text-left leading-relaxed">{store.description}</p>
         )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 mt-4">
         <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-xl shadow-black/5 flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
           {availableCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-extrabold tracking-wide transition-all ${
-                activeCategory === cat 
-                ? 'bg-slate-900 text-white shadow-md' 
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
-              }`}
-            >
-              {cat}
-            </button>
+            <button key={cat} onClick={() => setActiveCategory(cat)}
+              className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs sm:text-sm font-extrabold tracking-wide transition-all ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'}`}
+            >{cat}</button>
           ))}
         </div>
       </div>
@@ -159,19 +119,11 @@ export default function StoreCatalogView({ storeSlug, storeId, onSelectProduct }
               const displayCondition = p.condition === 'new' ? '✨ Nuevo' : (p.condition === 'open_box' ? '📂 Open Box' : '📦 Usado');
               const isOutOfStock = p.stock === 'out_of_stock';
               const mainImage = p.images?.length > 0 ? p.images[0] : null;
-              
               return (
-                <ProductCard 
-                  key={p.id} 
-                  product={p} 
-                  activeStoreName={store.name}
-                  storeBrandColor={store.primaryColor || '#0f172a'}
-                  mainImage={mainImage}
-                  getImageUrl={getImageUrl}
-                  displayCondition={displayCondition}
-                  isOutOfStock={isOutOfStock}
-                  onSelectProduct={onSelectProduct}
-                />
+                <ProductCard key={p.id} product={p} activeStoreName={store.name}
+                  storeBrandColor={store.primaryColor || '#0f172a'} mainImage={mainImage}
+                  getImageUrl={getImageUrl} displayCondition={displayCondition}
+                  isOutOfStock={isOutOfStock} onSelectProduct={setSelectedProduct} />
               );
             })}
           </div>
