@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Se inyecta la URL de PocketBase al momento de hacer el npm run build
-        - VITE_PB_URL=http://localhost:8090
+        - VITE_PB_URL=http://178.104.63.243:8090
     ports:
       - "3000:80" # Exponemos el frontend también en el puerto 3000 por si lo necesitas directo
     depends_on:
