@@ -7,12 +7,14 @@ import {
 } from 'lucide-react';
 import pb from '../lib/pocketbase';
 import useAuthStore from '../store/useAuthStore';
+import useCategories from '../hooks/useCategories';
 
 export default function BuyerPortalView() {
   const [myStores, setMyStores] = useState([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { categories } = useCategories();
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/auth'); return; }
@@ -54,12 +56,12 @@ export default function BuyerPortalView() {
               <div><label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1 block">Nombre de tu Tienda</label>
               <input name="name" type="text" required placeholder="Ej: TechStore C.A." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
               <div><label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1 block">Usuario en Instagram</label>
-              <input name="instagram" type="text" placeholder="@tutienda" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
+              <input name="instagram" type="text" required placeholder="@tutienda" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1 block">WhatsApp</label>
                 <input name="whatsapp" type="text" required placeholder="58414..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
                 <div><label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1 block">Correo</label>
-                <input name="email" type="email" required placeholder="tu@correo.com" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
+                <input name="correo" type="email" required placeholder="tu@correo.com" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 transition-all" /></div>
               </div>
               <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl mt-4 hover:bg-slate-800 transition-colors shadow-lg">Enviar Solicitud</button>
             </form>

@@ -1,21 +1,38 @@
+version: '3.8'
+
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Se inyecta la URL de PocketBase al momento de hacer el npm run build
+        - VITE_PB_URL=http://localhost:8090
     ports:
-      - "8080:80"
+      - "3000:80" # Exponemos el frontend también en el puerto 3000 por si lo necesitas directo
     depends_on:
       - pocketbase
     restart: unless-stopped
 
   pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
-    command: ["serve", "--http=0.0.0.0:8090"]
+    build:
+      context: .
+      dockerfile: Dockerfile.pb
     ports:
-      - "8090:8090"
+      - "8090:8090" # Acceso directo a PocketBase y su panel de admin
     volumes:
-      - pb_data:/pb_data
-      - ./pb/pb_migrations:/pb_migrations
+      - ./pb/pb_data:/pb/pb_data
+      - ./pb/pb_migrations:/pb/pb_migrations
+      - ./pb/pb_hooks:/pb/pb_hooks
     restart: unless-stopped
 
-volumes:
-  pb_data:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80" # El Nginx actuará como el gateway principal en http://localhost
+    volumes:
+      - ./nginx/local.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - pocketbase
+    restart: unless-stopped

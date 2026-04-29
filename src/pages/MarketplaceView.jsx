@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
-  Search, ArrowLeft, X, Plus, Filter, MapPin, MessageCircle, ChevronRight, User
+  Search, ArrowLeft, X, Plus, Filter, MapPin, MessageCircle, ChevronRight, User, Menu
 } from 'lucide-react';
 import pb from '../lib/pocketbase';
 import { getImageUrl, formatWhatsAppNumber, SPRING, SPRING_SLOW } from '../lib/utils';
@@ -14,6 +14,7 @@ import CategoryBentoGrid from '../components/CategoryBentoGrid';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
+import ProductGrid from '../components/marketplace/ProductGrid';
 import PriceDisplay from '../components/PriceDisplay';
 
 const IconInstagram = ({ size = 24, className = '' }) => (
@@ -39,9 +40,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Detalle del Producto
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
+
 
   // Buscador y Filtros
   const [searchType, setSearchType] = useState('products');
@@ -54,6 +53,8 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const [filterCond, setFilterCond] = useState('all');
   const [filterLoc, setFilterLoc] = useState('all');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 60);
@@ -61,58 +62,78 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Carga inicial de categorías y tiendas
   useEffect(() => {
-    const loadData = async () => {
+    pb.collection('categories').getFullList().then(setCategories).catch(() => {});
+    pb.collection('stores').getFullList().then(setStores).catch(() => {});
+    
+    if (exclusiveStoreSlug) {
+      pb.collection('stores').getFirstListItem(`slug="${exclusiveStoreSlug}"`).then(st => {
+        setActiveStore(st);
+        setSearchType('products');
+      }).catch(() => {});
+    } else if (exclusiveStoreId) {
+      pb.collection('stores').getOne(exclusiveStoreId).then(st => {
+        setActiveStore(st);
+        setSearchType('products');
+      }).catch(() => {});
+    }
+  }, [exclusiveStoreId, exclusiveStoreSlug]);
+
+  // Carga de productos Paginada y Filtrada
+  useEffect(() => {
+    const loadProducts = async () => {
       setIsLoading(true);
       try {
-        const categoriesRecord = await pb.collection('categories').getFullList();
-        setCategories(categoriesRecord);
-        if (exclusiveStoreSlug) {
-          const storeRecord = await pb.collection('stores').getFirstListItem(`slug="${exclusiveStoreSlug}"`);
-          const productsRecord = await pb.collection('products').getFullList({
-            filter: `store = "${storeRecord.id}"`,
-            expand: 'store,category'
-          });
-          setActiveStore(storeRecord);
-          setStores([storeRecord]);
-          setProducts([]); // reset
-          setTimeout(() => {
-             setProducts(productsRecord);
-             window.scrollTo(0, 0);
-          }, 50);
-          setSearchType('products');
-        } else if (exclusiveStoreId) {
-          // Filtro Absoluto para compartir tienda directa
-          const storeRecord = await pb.collection('stores').getOne(exclusiveStoreId);
-          const productsRecord = await pb.collection('products').getFullList({
-            filter: `store = "${exclusiveStoreId}"`,
-            expand: 'store'
-          });
-          setActiveStore(storeRecord);
-          setStores([storeRecord]);
-          setProducts(productsRecord);
-          setSearchType('products');
-        } else {
-          // Marketplace General
-          const [storesRecord, productsRecord] = await Promise.all([
-            pb.collection('stores').getFullList(),
-            pb.collection('products').getFullList({ expand: 'store' })
-          ]);
-          setStores(storesRecord);
-          setProducts(productsRecord);
+        let filterParams = 'store.status = "approved"';
+        
+        if (exclusiveStoreId) {
+           filterParams += ` && store = "${exclusiveStoreId}"`;
+        } else if (activeStore) {
+           filterParams += ` && store = "${activeStore.id}"`;
         }
+
+        if (searchTerm) {
+           filterParams += ` && (name ~ "${searchTerm}" || brand ~ "${searchTerm}")`;
+        }
+        if (activeCategory && activeCategory !== 'Todos') {
+           filterParams += ` && category.name = "${activeCategory}"`;
+        }
+        if (minPrice !== '') {
+           filterParams += ` && price >= ${Number(minPrice) * 100}`;
+        }
+        if (maxPrice !== '') {
+           filterParams += ` && price <= ${Number(maxPrice) * 100}`;
+        }
+        if (filterCond && filterCond !== 'all') {
+           filterParams += ` && condition = "${filterCond}"`;
+        }
+        if (filterLoc && filterLoc !== 'all') {
+           filterParams += ` && store.location = "${filterLoc}"`;
+        }
+
+        const productsRecord = await pb.collection('products').getList(currentPage, 20, {
+          expand: 'store,category',
+          filter: filterParams
+        });
+
+        setProducts(productsRecord.items);
+        setTotalPages(productsRecord.totalPages);
       } catch (error) {
-        console.error('Error exacto de PB:', error.response?.data?.data);
-        console.error('Error al cargar datos:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadData();
-  }, [exclusiveStoreId, exclusiveStoreSlug]);
+    loadProducts();
+  }, [currentPage, searchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc, exclusiveStoreId]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc]);
 
   // Listas Dinámicas
-  const availableCategories = ['Todos', ...new Set(stores?.map(s => s.category).filter(Boolean))];
+  const availableCategories = ['Todos', ...new Set(categories?.map(c => c.name).filter(Boolean))];
   const availableLocations = ['all', ...new Set(stores?.map(s => s.location).filter(Boolean))];
 
   const filteredStores = useMemo(() => stores.filter(store =>
@@ -121,23 +142,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
     (activeCategory === 'Todos' || store.category === activeCategory)
   ), [stores, searchTerm, activeCategory]);
 
-  const filteredProducts = useMemo(() => products.filter(p => {
-    const isApproved = p.expand?.store?.status === 'approved';
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.expand?.store?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStore = activeStore ? p.store === activeStore.id : true;
-    const matchesCategory = activeCategory === 'Todos' || p.expand?.store?.category === activeCategory;
-
-    // Pro Filters
-    const pPrice = p.price || 0;
-    const matchesMinPrice = minPrice === '' || pPrice >= Number(minPrice);
-    const matchesMaxPrice = maxPrice === '' || pPrice <= Number(maxPrice);
-    const matchCondition = filterCond === 'all' || p.condition === filterCond;
-    const matchLocation = filterLoc === 'all' || p.expand?.store?.location === filterLoc;
-
-    return isApproved && matchesSearch && matchesStore && matchesCategory && matchesMinPrice && matchesMaxPrice && matchCondition && matchLocation;
-  }), [products, searchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc]);
+  const filteredProducts = products;
 
   const handleApplyToSell = async (e) => {
     e.preventDefault();
@@ -156,19 +161,11 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
       toast.success('¡Solicitud enviada con éxito!');
       setShowApplyModal(false);
     } catch (err) {
-      console.error("Detalle del error:", err.response);
       toast.error('Hubo un error enviando tu solicitud.');
     }
   };
 
-  const comprarPorWhatsApp = (producto) => {
-    const rawPhone = producto.expand?.store?.whatsapp || "";
-    const telefono = formatWhatsAppNumber(rawPhone);
-    const condicion = producto.condition === 'new' ? 'Nuevo ✨' : (producto.condition === 'open_box' ? 'Open Box 📂' : 'Usado 📦');
-    const nombreTienda = producto.expand?.store?.name || "Tienda";
-    const mensaje = `Hola ${nombreTienda}, me interesa el ${producto.name} que vi en CapiMercado por ${producto.price} USDT. ¿Sigue disponible?`;
-    window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank');
-  };
+
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#050505] text-slate-900 dark:text-white font-sans selection:bg-slate-200 flex flex-col">
@@ -203,18 +200,18 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
             </div>
 
             {/* Desktop Search */}
-            <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <div className="hidden md:flex flex-1 justify-center px-4">
+              <div className="relative w-full max-w-xl">
+                <Search className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder={`Buscar ${searchType === 'products' ? 'iPhone, Sony...' : 'tiendas...'}`}
-                  className="w-full bg-white/10 border border-white/15 rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-white/20 transition-all outline-none text-white placeholder:text-white/50"
+                  className="w-full bg-white/10 border border-white/10 rounded-full py-2.5 pl-12 pr-4 text-sm focus:bg-white/15 focus:border-white/20 transition-all outline-none text-white placeholder:text-white/40 shadow-inner"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setSearchTerm('')} className="absolute right-4 top-3 text-slate-400 hover:text-white transition-colors">
                     <X size={16} />
                   </button>
                 )}
@@ -331,89 +328,6 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
         </div>
       )}
 
-      {/* --- MODAL DETALLE DE PRODUCTO (Cierre de Ventas) --- */}
-      {selectedProduct && (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 relative shadow-2xl border border-slate-100 dark:border-white/10">
-
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 md:top-6 md:right-6 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 dark:bg-white/10 rounded-full w-10 h-10 flex items-center justify-center transition-colors z-10"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="producto-detalle grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 mt-4 md:mt-0">
-
-              {/* Lado Izquierdo: Galería de Fotos */}
-              <div className="galeria-fotos flex flex-col gap-4">
-                <div className="foto-grande aspect-square rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#111] relative group">
-                  <img
-                    src={getImageUrl(selectedProduct, selectedProduct.images?.[imagenSeleccionada], '800x800')}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform duration-500"
-                    onClick={() => window.open(getImageUrl(selectedProduct, selectedProduct.images?.[imagenSeleccionada]), '_blank')}
-                  />
-                </div>
-                {selectedProduct.images && selectedProduct.images.length > 1 && (
-                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                    {selectedProduct.images.map((img, idx) => (
-                      <img
-                        key={idx}
-                        src={getImageUrl(selectedProduct, img, '100x100')}
-                        className={`w-20 h-20 shrink-0 object-cover rounded-xl cursor-pointer border-2 transition-all ${imagenSeleccionada === idx ? 'border-slate-900 opacity-100 scale-95' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-95'}`}
-                        onClick={() => setImagenSeleccionada(idx)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Lado Derecho: Info y Botones */}
-              <div className="info-producto flex flex-col justify-center">
-                <p className="text-sm font-bold uppercase tracking-widest mb-1 items-center gap-1 flex" style={{ color: selectedProduct.expand?.store?.primaryColor || '#3b82f6' }}>
-                  {selectedProduct.expand?.store?.name || 'CapiMercado'}
-                </p>
-                <h2 className="text-3xl md:text-4xl font-black mb-2 text-slate-900 dark:text-white tracking-tight leading-tight">{selectedProduct.name}</h2>
-                <div className="mb-6 flex items-baseline gap-2">
-                  <PriceDisplay amount={selectedProduct.price} className="scale-125 origin-left" />
-                  <span className="text-lg text-slate-500 font-bold ml-4">USDT</span>
-                </div>
-
-                {/* Condición y Descripción */}
-                <div className="mb-8 p-5 bg-slate-50 dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5">
-                  <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-1">Condición</p>
-                  <p className="text-lg font-medium text-slate-800 dark:text-slate-200 mb-4 pb-4 border-b border-slate-200 dark:border-white/10">
-                    {selectedProduct.condition === 'new'
-                      ? '✨ Nuevo Sellado'
-                      : (selectedProduct.condition === 'open_box' ? '📂 Abierto (Open Box)' : `📦 Usado`)
-                    }
-                  </p>
-
-                  <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-2">Descripción</p>
-                  <div className="text-sm text-slate-700 dark:text-slate-400 leading-relaxed whitespace-pre-line">
-                    {selectedProduct.description || "Sin descripción adicional proporcionada por el vendedor."}
-                  </div>
-                </div>
-
-                <div className="flex mt-auto fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-white/90 dark:bg-black/90 backdrop-blur-xl md:static md:bg-transparent z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] md:shadow-none border-t border-slate-100/50 dark:border-white/10 md:border-none rounded-t-3xl md:rounded-none flex-row items-center justify-between md:flex-col md:items-stretch gap-4 md:gap-3">
-                  <div className="md:hidden flex flex-col justify-center">
-                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-widest leading-none mb-1">Precio Final</span>
-                    <PriceDisplay amount={selectedProduct.price} />
-                  </div>
-                  <button
-                    onClick={() => comprarPorWhatsApp(selectedProduct)}
-                    disabled={selectedProduct.stock === 'out_of_stock'}
-                    className="flex-1 md:w-full bg-[#050505] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed text-[#FDFBF7] font-bold py-3.5 px-6 md:py-5 md:px-8 rounded-full shadow-premium flex items-center justify-center gap-2 transition-all duration-300 md:hover:-translate-y-1 active:scale-95 text-sm md:text-lg"
-                  >
-                    <MessageCircle size={20} className="text-luxury-green" /> {selectedProduct.stock === 'out_of_stock' ? 'Agotado' : 'Comprar vía WhatsApp'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <motion.main initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 180, damping: 22 }} className="flex-grow" style={{ willChange: "transform" }}>
         {isLoading ? (
@@ -462,7 +376,17 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                 </h1>
 
                 <span className="inline-block py-1.5 px-4 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold tracking-wider uppercase mt-2 flex items-center gap-2 w-max">
-                  {activeStore.category} {activeStore.location && <><MapPin size={12} /> {activeStore.location}</>}
+                  {activeStore.category} 
+                  {activeStore.location && (
+                    <>
+                      <MapPin size={12} /> {activeStore.location}
+                      {activeStore.maps_url && (
+                        <a href={activeStore.maps_url} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white rounded-full text-[9px] font-extrabold hover:bg-emerald-400 transition-colors">
+                          VER EN MAPS
+                        </a>
+                      )}
+                    </>
+                  )}
                 </span>
 
                 {activeStore.description && (
@@ -493,23 +417,26 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
           </section>
         )}
 
-        {/* --- FILTER CHIPS: Swipe nativo horizontal (Pilar 4) --- */}
-        <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-8 sm:mb-12 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 sm:gap-3 pb-2">
-            {availableCategories?.map(cat => (
-              <motion.button
-                key={cat}
-                whileTap={{ scale: 0.95 }}
-                transition={SPRING}
-                onClick={() => setActiveCategory(cat)}
-                className={`whitespace-nowrap px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-extrabold tracking-wide transition-all ${activeCategory === cat
-                  ? 'bg-[#050505] text-white shadow-lg'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-800 hover:text-slate-900'
-                  }`}
-              >
-                {cat}
-              </motion.button>
-            ))}
+        {/* --- FILTER CHIPS: Sticky Horizontal Bar --- */}
+        <section className="sticky top-0 z-40 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shadow-sm mb-8 sm:mb-12 transition-all duration-300">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar py-3 sm:py-4">
+            <div className="flex gap-2 sm:gap-3">
+              {availableCategories?.map(cat => (
+                <motion.button
+                  key={cat}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  onClick={() => { setActiveCategory(cat); document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                  className={`whitespace-nowrap px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors duration-300 ${activeCategory === cat
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
+                    : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                  {cat}
+                </motion.button>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -597,41 +524,15 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
           {/* RENDERING PRODUCTS */}
           {searchType === 'products' && (
             <>
-              {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-6 lg:gap-8 mt-4">
-                  {filteredProducts?.map((p) => {
-                    const storeBrandColor = p.expand?.store?.primaryColor || '#0f172a';
-                    const mainImage = p.images?.length > 0 ? p.images[0] : null;
-                    const displayCondition = p.condition === 'new' ? '✨ Nuevo' : (p.condition === 'open_box' ? '📂 Open Box' : '📦 Usado');
-                    const isOutOfStock = p.stock === 'out_of_stock';
-
-                    return (
-                      <ProductCard
-                        key={p.id}
-                        product={p}
-                        activeStoreName={activeStore ? activeStore.name : null}
-                        storeBrandColor={storeBrandColor}
-                        mainImage={mainImage}
-                        getImageUrl={getImageUrl}
-                        displayCondition={displayCondition}
-                        isOutOfStock={isOutOfStock}
-                        onSelectProduct={(prod) => {
-                          setSelectedProduct(prod);
-                          setImagenSeleccionada(0);
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-20 text-center flex flex-col items-center">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Search className="h-8 w-8 text-slate-300" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">No se encontraron resultados</h3>
-                  <p className="text-slate-500 font-medium max-w-sm">No encontramos artículos que coincidan con tu búsqueda y filtros actuales.</p>
-                </div>
-              )}
+              <ProductGrid 
+                products={filteredProducts} 
+                isLoading={isLoading} 
+                activeStoreName={activeStore ? activeStore.name : null}
+                getImageUrl={getImageUrl}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setPage={setCurrentPage}
+              />
             </>
           )}
         </section>

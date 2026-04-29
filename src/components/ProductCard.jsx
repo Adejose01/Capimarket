@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 import PriceDisplay from './PriceDisplay';
@@ -14,9 +15,12 @@ export default function ProductCard({
   mainImage, 
   getImageUrl, 
   displayCondition, 
-  isOutOfStock, 
-  onSelectProduct 
+  isOutOfStock,
+  onSelectProduct // if they ever use it
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const comprarPorWhatsAppRapido = (e, producto) => {
     e.stopPropagation();
     const rawPhone = producto.expand?.store?.whatsapp || "";
@@ -27,10 +31,10 @@ export default function ProductCard({
 
   return (
     <motion.div 
-      whileHover={{ y: -6, scale: 1.01 }} 
+      whileHover={{ y: -6, scale: 1.05 }} 
       transition={SPRING} 
-      className={`transform-gpu group bg-white dark:bg-[#0a0a0a] rounded-3xl border border-slate-100 dark:border-white/10 shadow-sm hover:shadow-card-hover flex flex-col cursor-pointer overflow-hidden ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
-      onClick={() => onSelectProduct(product)}
+      className={`transform-gpu h-full w-full group bg-white dark:bg-[#0a0a0a] rounded-3xl border border-slate-100 dark:border-white/10 shadow-sm hover:shadow-card-hover flex flex-col cursor-pointer overflow-hidden ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
+      onClick={() => navigate(`/producto/${product.id}`, { state: { background: location } })}
     >
       <div className="relative aspect-square overflow-hidden bg-slate-50 dark:bg-[#111] p-6 flex flex-col items-center justify-center">
         {mainImage ? (

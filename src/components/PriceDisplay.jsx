@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function PriceDisplay({ amount, className = "" }) {
-  const numericAmount = Number(amount) || 0;
+  const numericAmount = (Number(amount) || 0) / 100;
   
   // Format to standard US currency e.g., 1,500.00
   const formatted = numericAmount.toLocaleString('en-US', {

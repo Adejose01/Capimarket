@@ -22,7 +22,6 @@ export default function StoreCatalogView() {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState('Todos');
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -31,35 +30,48 @@ export default function StoreCatalogView() {
         if (slug) {
           storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`);
         } else {
-          console.error('StoreCatalogView: No slug provided');
           return;
         }
         const productsRecord = await pb.collection('products').getFullList({ 
           filter: `store = "${storeRecord.id}"`,
-          expand: 'store' 
+          expand: 'store,category' 
         });
         setStore(storeRecord);
         setProducts(productsRecord);
       } catch (error) {
-        console.error('Error al cargar la tienda:', error);
+        // Silent catch
       }
     };
     loadStoreData();
   }, [slug]);
 
-  const availableCategories = ['Todos', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const availableCategories = ['Todos', ...new Set(products.map(p => p.expand?.category?.name).filter(Boolean))];
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => activeCategory === 'Todos' || p.category === activeCategory);
+    return products.filter(p => activeCategory === 'Todos' || p.expand?.category?.name === activeCategory);
   }, [products, activeCategory]);
 
-  if (!store) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-slate-300 border-t-emerald-500 animate-spin"></div></div>;
+  if (!store) return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="h-48 md:h-64 w-full bg-slate-200 animate-pulse"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+         <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-slate-300 animate-pulse border-4 border-white shadow-xl -mt-16 md:-mt-20 mb-8"></div>
+         <div className="h-10 bg-slate-300 animate-pulse rounded w-1/3 mb-4"></div>
+         <div className="h-4 bg-slate-300 animate-pulse rounded w-1/4 mb-12"></div>
+         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+           {[...Array(8)].map((_, i) => (
+             <div key={i} className="aspect-[3/4] bg-slate-200 rounded-3xl animate-pulse"></div>
+           ))}
+         </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-slate-200">
       <div className="h-48 md:h-64 w-full bg-slate-900 overflow-hidden relative">
         {store.banner ? (
-          <img src={getImageUrl(store, store.banner, '1200x400')} alt="Banner" className="w-full h-full object-cover opacity-80" />
+          <img src={getImageUrl(store, store.banner, '1200x400')} alt="Banner" className="w-full h-full object-cover block" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900" />
         )}
@@ -84,7 +96,14 @@ export default function StoreCatalogView() {
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">{store.category}</span>
               {store.location && (
-                <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium"><MapPin size={16}/> {store.location}</span>
+                <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium">
+                  <MapPin size={16}/> {store.location}
+                  {store.maps_url && (
+                    <a href={store.maps_url} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold hover:bg-emerald-100 transition-colors uppercase tracking-widest border border-emerald-200">
+                      Ver en Maps
+                    </a>
+                  )}
+                </span>
               )}
             </div>
           </div>
@@ -123,7 +142,7 @@ export default function StoreCatalogView() {
                 <ProductCard key={p.id} product={p} activeStoreName={store.name}
                   storeBrandColor={store.primaryColor || '#0f172a'} mainImage={mainImage}
                   getImageUrl={getImageUrl} displayCondition={displayCondition}
-                  isOutOfStock={isOutOfStock} onSelectProduct={setSelectedProduct} />
+                  isOutOfStock={isOutOfStock} />
               );
             })}
           </div>

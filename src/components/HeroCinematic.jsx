@@ -16,11 +16,11 @@ export default function HeroCinematic({ onExplore }) {
             <span className="w-1.5 h-1.5 rounded-full bg-luxury-green animate-pulse inline-block" />
             Nueva Coleccion 2026
           </motion.span>
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter text-white leading-[0.92] italic">
-            Tecnologia<br />
-            <span className="not-italic text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg,#10b981,#34d399)' }}>de Lujo.</span>
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter text-white leading-[0.92]">
+            Encuentra lo que necesitas en<br />
+            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg,#10b981,#34d399)' }}>CapiMarket.</span>
           </h1>
-          <p className="text-sm text-white/50 max-w-xs mx-auto md:mx-0 leading-relaxed font-medium">El ecosistema premium de tecnologia de Venezuela. Marcas certificadas, precios transparentes.</p>
+          <p className="text-sm text-white/50 max-w-xs mx-auto md:mx-0 leading-relaxed font-medium">El ecosistema premium de comercio de Venezuela. Todas las tiendas, en un solo lugar.</p>
           <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} transition={SPRING} onClick={onExplore} className="self-center md:self-start flex items-center gap-3 bg-white text-[#050505] px-7 py-3.5 sm:px-8 sm:py-4 rounded-full font-extrabold text-sm sm:text-base shadow-xl hover:shadow-2xl transition-shadow">
             Explorar Ahora <ChevronRight className="h-4 w-4" />
           </motion.button>

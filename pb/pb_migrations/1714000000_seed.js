@@ -15,6 +15,7 @@ migrate((app) => {
     record.set("span", cat.span);
     record.set("gradient", cat.gradient);
     record.set("textColor", cat.textColor);
+    record.set("icon", "lucide-" + cat.slug); // just a dummy value since it's required
     app.save(record);
   }
 }, (app) => {
