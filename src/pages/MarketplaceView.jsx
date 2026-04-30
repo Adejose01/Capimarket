@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -6,7 +6,7 @@ import {
   Search, ArrowLeft, X, Plus, Filter, MapPin, MessageCircle, ChevronRight, User, Menu
 } from 'lucide-react';
 import pb from '../lib/pocketbase';
-import { getImageUrl, formatWhatsAppNumber, SPRING, SPRING_SLOW } from '../lib/utils';
+import { getImageUrl, formatWhatsAppNumber, SPRING, SPRING_SLOW, getCategoryIcon } from '../lib/utils';
 import useAuthStore from '../store/useAuthStore';
 import SafeImage from '../components/SafeImage';
 import HeroCinematic from '../components/HeroCinematic';
@@ -16,6 +16,7 @@ import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import ProductGrid from '../components/marketplace/ProductGrid';
 import PriceDisplay from '../components/PriceDisplay';
+import useDebounce from '../hooks/useDebounce';
 
 const IconInstagram = ({ size = 24, className = '' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
@@ -34,6 +35,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const [activeStore, setActiveStore] = useState(null);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // UI States
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,6 +57,10 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  
+  const catalogRef = useRef(null);
+
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 60);
@@ -62,23 +68,42 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Carga inicial de categorías y tiendas
+  // Carga inicial de datos y manejo de slugs exclusivos
   useEffect(() => {
-    pb.collection('categories').getFullList().then(setCategories).catch(() => {});
-    pb.collection('stores').getFullList().then(setStores).catch(() => {});
-    
-    if (exclusiveStoreSlug) {
-      pb.collection('stores').getFirstListItem(`slug="${exclusiveStoreSlug}"`).then(st => {
-        setActiveStore(st);
-        setSearchType('products');
-      }).catch(() => {});
-    } else if (exclusiveStoreId) {
-      pb.collection('stores').getOne(exclusiveStoreId).then(st => {
-        setActiveStore(st);
-        setSearchType('products');
-      }).catch(() => {});
-    }
+    const init = async () => {
+      try {
+        const [cats, strs] = await Promise.all([
+          pb.collection('categories').getFullList(),
+          pb.collection('stores').getFullList()
+        ]);
+        setCategories(cats);
+        setStores(strs);
+
+        // Si hay slug/id exclusivo, cargar esa tienda
+        if (exclusiveStoreSlug) {
+          const st = await pb.collection('stores').getFirstListItem(`slug="${exclusiveStoreSlug}"`);
+          setActiveStore(st);
+          setSearchType('products');
+        } else if (exclusiveStoreId) {
+          const st = await pb.collection('stores').getOne(exclusiveStoreId);
+          setActiveStore(st);
+          setSearchType('products');
+        }
+      } catch (err) {
+        console.error("Init error:", err);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+    init();
   }, [exclusiveStoreId, exclusiveStoreSlug]);
+
+  // Auto-scroll al buscar
+  useEffect(() => {
+    if (debouncedSearchTerm && debouncedSearchTerm.trim() !== '') {
+      catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [debouncedSearchTerm]);
 
   // Carga de productos Paginada y Filtrada
   useEffect(() => {
@@ -93,11 +118,19 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
            filterParams += ` && store = "${activeStore.id}"`;
         }
 
-        if (searchTerm) {
-           filterParams += ` && (name ~ "${searchTerm}" || brand ~ "${searchTerm}")`;
+        if (debouncedSearchTerm) {
+           filterParams += ` && (name ~ "${debouncedSearchTerm}" || brand ~ "${debouncedSearchTerm}")`;
         }
         if (activeCategory && activeCategory !== 'Todos') {
-           filterParams += ` && category.name = "${activeCategory}"`;
+           const selectedCat = categories.find(c => c.name === activeCategory);
+           if (selectedCat) {
+             if (!selectedCat.parent_id) {
+               // Búsqueda recursiva: categoría raíz o hijos de esta raíz
+               filterParams += ` && (category = "${selectedCat.id}" || category.parent_id = "${selectedCat.id}")`;
+             } else {
+               filterParams += ` && category = "${selectedCat.id}"`;
+             }
+           }
         }
         if (minPrice !== '') {
            filterParams += ` && price >= ${Number(minPrice) * 100}`;
@@ -125,22 +158,44 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
       }
     };
     loadProducts();
-  }, [currentPage, searchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc, exclusiveStoreId]);
+  }, [currentPage, debouncedSearchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc, exclusiveStoreId]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc]);
+  }, [debouncedSearchTerm, activeStore, activeCategory, minPrice, maxPrice, filterCond, filterLoc]);
 
-  // Listas Dinámicas
-  const availableCategories = ['Todos', ...new Set(categories?.map(c => c.name).filter(Boolean))];
+  // Listas Dinámicas — Solo mostramos los Rubros (Categorías Raíz) en la barra superior
+  const availableCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return ['Todos'];
+    const roots = categories.filter(c => !c.parent_id).map(c => c.name);
+    const list = ['Todos', ...roots];
+    
+    // Si hay una categoría activa que es subcategoría (ej: desde Bento Grid), la incluimos para que se vea seleccionada
+    if (activeCategory !== 'Todos' && !list.includes(activeCategory)) {
+       list.push(activeCategory);
+    }
+    return list;
+  }, [categories, activeCategory]);
+
   const availableLocations = ['all', ...new Set(stores?.map(s => s.location).filter(Boolean))];
 
-  const filteredStores = useMemo(() => stores.filter(store =>
-    store.status === 'approved' &&
-    store.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (activeCategory === 'Todos' || store.category === activeCategory)
-  ), [stores, searchTerm, activeCategory]);
+  const filteredStores = useMemo(() => stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         (store.category && Array.isArray(store.category) && store.category.some(catId => {
+                           const cat = categories.find(c => c.id === catId);
+                           return cat && cat.name.toLowerCase().includes(searchTerm.toLowerCase());
+                         }));
+    
+    const matchesCategory = activeCategory === 'Todos' || (store.category && Array.isArray(store.category) && store.category.some(catId => {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return false;
+      const selectedCat = categories.find(c => c.name === activeCategory);
+      return cat.id === selectedCat?.id || cat.parent_id === selectedCat?.id;
+    }));
+
+    return store.status === 'approved' && matchesSearch && matchesCategory;
+  }), [stores, searchTerm, activeCategory, categories]);
 
   const filteredProducts = products;
 
@@ -209,6 +264,11 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                   className="w-full bg-white/10 border border-white/10 rounded-full py-2.5 pl-12 pr-4 text-sm focus:bg-white/15 focus:border-white/20 transition-all outline-none text-white placeholder:text-white/40 shadow-inner"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setDebouncedSearchTerm(searchTerm);
+                    }
+                  }}
                 />
                 {searchTerm && (
                   <button onClick={() => setSearchTerm('')} className="absolute right-4 top-3 text-slate-400 hover:text-white transition-colors">
@@ -282,6 +342,11 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                 className="w-full bg-white/10 border border-white/15 rounded-full py-2.5 pl-10 pr-4 outline-none text-sm text-white placeholder:text-white/50"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setDebouncedSearchTerm(searchTerm);
+                  }
+                }}
               />
             </div>
           </div>
@@ -330,7 +395,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
 
 
       <motion.main initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 180, damping: 22 }} className="flex-grow" style={{ willChange: "transform" }}>
-        {isLoading ? (
+        {isInitialLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
              <div className="w-16 h-16 border-4 border-slate-200 border-t-luxury-green rounded-full animate-spin mb-4 mx-auto"></div>
              <p className="text-xl font-bold text-slate-900">CapiMercado: Preparando vitrinas...</p>
@@ -375,19 +440,33 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                   )}
                 </h1>
 
-                <span className="inline-block py-1.5 px-4 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold tracking-wider uppercase mt-2 flex items-center gap-2 w-max">
-                  {activeStore.category} 
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-4">
+                  {activeStore.category && Array.isArray(activeStore.category) && activeStore.category.map(catId => {
+                    const cat = categories.find(c => c.id === catId);
+                    if (!cat) return null;
+                    const Icon = getCategoryIcon(cat.name);
+                    return (
+                      <span key={catId} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-2">
+                        <Icon size={12} /> {cat.name}
+                      </span>
+                    );
+                  })}
+                  {!Array.isArray(activeStore.category) && activeStore.category && (
+                     <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-2">
+                       {activeStore.category}
+                     </span>
+                  )}
                   {activeStore.location && (
-                    <>
+                    <span className="flex items-center gap-2">
                       <MapPin size={12} /> {activeStore.location}
                       {activeStore.maps_url && (
                         <a href={activeStore.maps_url} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white rounded-full text-[9px] font-extrabold hover:bg-emerald-400 transition-colors">
                           VER EN MAPS
                         </a>
                       )}
-                    </>
+                    </span>
                   )}
-                </span>
+                </div>
 
                 {activeStore.description && (
                   <p className="text-white text-sm md:text-base mt-5 opacity-90 text-center md:text-left leading-relaxed">
@@ -441,7 +520,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
         </section>
 
         {/* --- DYNAMIC GRID --- */}
-        <section id="catalogo" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-[40vh] scroll-mt-20 pb-32 sm:pb-20">
+        <section id="catalogo" ref={catalogRef} className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-[40vh] scroll-mt-20 pb-32 sm:pb-20">
 
           <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
@@ -513,7 +592,19 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                   </div>
                   <div className="z-10 flex-1">
                     <h5 className="font-bold text-lg text-slate-900 tracking-tight leading-none mb-1">{s.name}</h5>
-                    <p className="text-xs font-medium text-slate-500">{s.category} {s.location && `• ${s.location}`}</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {s.category && Array.isArray(s.category) && s.category.slice(0, 3).map(catId => {
+                        const cat = categories.find(c => c.id === catId);
+                        if (!cat) return null;
+                        const Icon = getCategoryIcon(cat.name);
+                        return (
+                          <span key={catId} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                            <Icon size={10} /> {cat.name}
+                          </span>
+                        );
+                      })}
+                      {s.location && <span className="text-xs font-medium text-slate-400">• {s.location}</span>}
+                    </div>
                   </div>
                   <ChevronRight className="ml-auto text-slate-300 group-hover:text-slate-900 transition-colors group-hover:translate-x-1 z-10" />
                 </div>

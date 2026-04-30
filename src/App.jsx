@@ -8,16 +8,14 @@ import SuperAdminView from './pages/SuperAdminView';
 import StoreCatalogView from './pages/StoreCatalogView';
 import ProductDetailView from './pages/ProductDetailView';
 
-// ============================================================================
-// ENRUTADOR PRINCIPAL — CapiMercado
-// Todas las vistas han sido modularizadas en /pages/
-// ============================================================================
+import ErrorBoundary from './components/ErrorBoundary';
+
 export default function App() {
   const location = useLocation();
   const background = location.state && location.state.background;
 
   return (
-    <>
+    <ErrorBoundary>
       <Routes location={background || location}>
         <Route path="/" element={<MarketplaceView />} />
         <Route path="/auth" element={<AuthView />} />
@@ -36,6 +34,6 @@ export default function App() {
           <Route path="/producto/:id" element={<ProductDetailView />} />
         </Routes>
       )}
-    </>
+    </ErrorBoundary>
   );
 }

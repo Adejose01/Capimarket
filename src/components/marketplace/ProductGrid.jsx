@@ -51,7 +51,7 @@ export default function ProductGrid({ products, isLoading, activeStoreName, getI
         animate="show" 
         className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-6 lg:gap-8 mt-4"
       >
-        {products.map((p) => {
+        {products.map((p, index) => {
           const storeBrandColor = p.expand?.store?.primaryColor || '#0f172a';
           const mainImage = p.images?.length > 0 ? p.images[0] : null;
           const displayCondition = p.condition === 'new' ? '✨ Nuevo' : (p.condition === 'open_box' ? '📂 Open Box' : '📦 Usado');
@@ -67,6 +67,7 @@ export default function ProductGrid({ products, isLoading, activeStoreName, getI
                 getImageUrl={getImageUrl}
                 displayCondition={displayCondition}
                 isOutOfStock={isOutOfStock}
+                priority={index < 4} // Primeros 4 elementos tienen prioridad (primera fila en desktop/tablet)
                 onSelectProduct={(prod) => onSelectProduct(prod)}
               />
             </motion.div>

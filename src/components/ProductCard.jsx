@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 import PriceDisplay from './PriceDisplay';
 import { SPRING, formatWhatsAppNumber } from '../lib/utils';
+import OptimizedImage from './OptimizedImage';
 
 // ============================================================================
 // PRODUCT CARD — Componente reutilizable de tarjeta de producto
@@ -16,6 +17,7 @@ export default function ProductCard({
   getImageUrl, 
   displayCondition, 
   isOutOfStock,
+  priority = false, // Nuevo prop para LCP
   onSelectProduct // if they ever use it
 }) {
   const navigate = useNavigate();
@@ -38,9 +40,11 @@ export default function ProductCard({
     >
       <div className="relative aspect-square overflow-hidden bg-slate-50 dark:bg-[#111] p-6 flex flex-col items-center justify-center">
         {mainImage ? (
-           <img 
+           <OptimizedImage 
               src={getImageUrl(product, mainImage, '400x500')} 
               alt={product.name} 
+              priority={priority}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="w-[90%] h-[90%] object-contain high-quality-rendering group-hover:scale-105 transition-transform duration-700 mix-blend-multiply dark:mix-blend-normal"
            />
         ) : (

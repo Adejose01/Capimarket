@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, ArrowLeft, Filter } from 'lucide-react';
 import pb from '../lib/pocketbase';
-import { getImageUrl } from '../lib/utils';
+import { getImageUrl, getCategoryIcon } from '../lib/utils';
 import ProductCard from '../components/ProductCard';
 import PriceDisplay from '../components/PriceDisplay';
 import SafeImage from '../components/SafeImage';
@@ -28,7 +28,7 @@ export default function StoreCatalogView() {
       try {
         let storeRecord;
         if (slug) {
-          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`);
+          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`, { expand: 'category' });
         } else {
           return;
         }
@@ -94,7 +94,20 @@ export default function StoreCatalogView() {
           <div className="flex-1 text-center md:text-left mb-2 md:mb-4">
             <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">{store.name}</h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">{store.category}</span>
+              {store.expand?.category && Array.isArray(store.expand.category) ? (
+                store.expand.category.map(cat => {
+                  const Icon = getCategoryIcon(cat.name);
+                  return (
+                    <span key={cat.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                      <Icon size={12} /> {cat.name}
+                    </span>
+                  );
+                })
+              ) : (
+                store.category && (
+                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{store.category}</span>
+                )
+              )}
               {store.location && (
                 <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium">
                   <MapPin size={16}/> {store.location}

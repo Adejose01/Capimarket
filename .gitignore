@@ -24,3 +24,6 @@ pb/pb_data/
 *.njsproj
 *.sln
 *.sw?
+scratch/
+artifacts/
+.tempmediaStorage/

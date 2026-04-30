@@ -24,3 +24,32 @@ export const formatWhatsAppNumber = (phone) => {
   if (!cleaned.startsWith('58')) cleaned = '58' + cleaned; // Forzar prefijo 58
   return cleaned;
 };
+
+import { Smartphone, Laptop, Headphones, Package, Car, Home, Dumbbell, Smartphone as Phone, Wrench, Shirt } from 'lucide-react';
+
+export const getCategoryIcon = (name = "") => {
+  const n = name.toLowerCase();
+  if (n.includes('electrónica') || n.includes('tech')) return Smartphone;
+  if (n.includes('deportes')) return Dumbbell;
+  if (n.includes('vehículos') || n.includes('camioneta')) return Car;
+  if (n.includes('hogar') || n.includes('mueble')) return Home;
+  if (n.includes('repuesto') || n.includes('herramienta')) return Wrench;
+  if (n.includes('ropa') || n.includes('moda')) return Shirt;
+  if (n.includes('phone')) return Phone;
+  if (n.includes('laptop')) return Laptop;
+  if (n.includes('audio')) return Headphones;
+  return Package;
+};
+
+/**
+ * Sanitiza texto para prevenir XSS básico. 
+ * Aunque React escapa por defecto, este blindaje adicional limpia el input.
+ */
+export const sanitizeText = (text = "") => {
+  if (typeof text !== 'string') return "";
+  return text
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "") // Quitar scripts
+    .replace(/on\w+="[^"]*"/gim, "") // Quitar event handlers inline
+    .replace(/javascript:[^"]*/gim, "") // Quitar protocolos javascript:
+    .trim();
+};
