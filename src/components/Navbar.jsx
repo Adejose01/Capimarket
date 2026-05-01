@@ -89,7 +89,7 @@ export default function Navbar({
               </>
             )}
             {isAuthenticated ? (
-              <button onClick={() => navigate('/mi-cuenta')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-luxury-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
+              <button onClick={() => navigate('/mi-cuenta')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
                 <User size={16} /> Mi Cuenta
               </button>
             ) : (

@@ -166,7 +166,7 @@ export default function ProductDetailView() {
                   disabled={product.stock === 'out_of_stock'}
                   className="w-full bg-[#050505] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed text-[#FDFBF7] font-bold py-4 px-8 rounded-full shadow-premium flex items-center justify-center gap-3 transition-all duration-300 md:hover:-translate-y-1 active:scale-95 text-lg"
                 >
-                  <MessageCircle size={24} className="text-luxury-green" /> 
+                  <MessageCircle size={24} className="text-brand-green" /> 
                   {product.stock === 'out_of_stock' ? 'Agotado' : 'Comprar vía WhatsApp'}
                 </button>
               </div>

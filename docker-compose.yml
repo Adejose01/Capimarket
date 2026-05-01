@@ -20,6 +20,19 @@ services:
       dockerfile: Dockerfile.pb
     ports:
       - "8090:8090" # Acceso directo a PocketBase y su panel de admin
+    env_file:
+      - .env
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_SENDER_NAME=${SMTP_SENDER_NAME}
+      - SMTP_SENDER_ADDRESS=${SMTP_SENDER_ADDRESS}
     volumes:
       - ./pb/pb_data:/pb/pb_data
       - ./pb/pb_migrations:/pb/pb_migrations

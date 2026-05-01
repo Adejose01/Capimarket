@@ -14,8 +14,8 @@ export default {
         sans: ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       colors: {
-        'luxury-green': '#10b981',
-        'luxury-dark': '#050505',
+        'brand-green': '#10b981',
+        'brand-dark': '#050505',
       },
       boxShadow: {
         // Grover-style: profundo pero ultra-sutil

@@ -84,7 +84,7 @@ export default function ProductCard({
              disabled={isOutOfStock}
              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-2 sm:p-2.5 rounded-full transition-all shadow-sm hover:scale-110 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-1 group/btn"
           >
-             <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 group-hover/btn:text-luxury-green transition-colors" />
+             <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 group-hover/btn:text-brand-green transition-colors" />
           </button>
         </div>
       </div>

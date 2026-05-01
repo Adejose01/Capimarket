@@ -7,6 +7,8 @@ import SellerPortalView from './pages/SellerPortalView';
 import SuperAdminView from './pages/SuperAdminView';
 import StoreCatalogView from './pages/StoreCatalogView';
 import ProductDetailView from './pages/ProductDetailView';
+import PrivacyView from './pages/PrivacyView';
+import TermsView from './pages/TermsView';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -26,6 +28,8 @@ export default function App() {
         <Route path="/producto/:id" element={<ProductDetailView />} />
         <Route path="/panel" element={<SellerPortalView />} />
         <Route path="/admin-control-valencia-2026" element={<SuperAdminView />} />
+        <Route path="/privacy" element={<PrivacyView />} />
+        <Route path="/terms" element={<TermsView />} />
         <Route path="*" element={<MarketplaceView />} />
       </Routes>
 

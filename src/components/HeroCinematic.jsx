@@ -17,7 +17,7 @@ export default function HeroCinematic({ onExplore }) {
             Ecosistema de Comercio 2026
           </motion.span>
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter text-white leading-[0.92]">
-            CapiMarket: Todo lo que buscas,<br />
+            CapiMercado: Todo lo que buscas,<br />
             <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg,#10b981,#34d399)' }}>en un solo lugar.</span>
           </h1>
           <p className="text-sm text-white/50 max-w-sm mx-auto md:mx-0 leading-relaxed font-medium">Desde el último smartphone hasta el repuesto que le falta a tu carro. El ecosistema premium de comercio en Venezuela.</p>
@@ -28,7 +28,7 @@ export default function HeroCinematic({ onExplore }) {
         <div className="relative flex items-end justify-center h-[180px] sm:h-[320px] md:h-[400px]">
           <div className="hero-ground-shadow absolute bottom-0 left-1/2 -translate-x-1/2 w-[55%] h-8 sm:h-10" />
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING_SLOW, delay: 0.3 }} className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[85%] max-w-[400px] sm:max-w-[500px]">
-            <img src="/assets/hero-banner.png" alt="CapiMarket Diverse" className="w-full h-full object-contain select-none drop-shadow-2xl" draggable={false} />
+            <img src="/assets/hero-banner.png" alt="CapiMercado Diverse" className="w-full h-full object-contain select-none drop-shadow-2xl" draggable={false} />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...SPRING, delay: 0.65 }} className="glass-card absolute top-3 right-3 sm:top-6 sm:right-6 rounded-xl sm:rounded-2xl px-4 py-3 flex flex-col">
             <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500">Disponible</span>

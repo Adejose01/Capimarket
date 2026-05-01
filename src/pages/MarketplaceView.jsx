@@ -297,7 +297,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
                 </>
               )}
               {isAuthenticated ? (
-                <button onClick={() => navigate('/mi-cuenta')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-luxury-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
+                <button onClick={() => navigate('/mi-cuenta')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
                   <User size={16} /> Mi Cuenta
                 </button>
               ) : (
@@ -359,7 +359,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative">
             <button onClick={() => setShowApplyModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900"><X size={20} /></button>
             <h3 className="text-2xl font-bold text-slate-900 mb-2">Conviértete en Aliado</h3>
-            <p className="text-slate-500 text-sm mb-6">Únete al marketplace líder. Completa tus datos y te contactaremos para verificar tu tienda.</p>
+            <p className="text-slate-500 text-sm mb-6">Únete al mercado líder. Completa tus datos y te contactaremos para verificar tu tienda.</p>
 
             <form onSubmit={handleApplyToSell} className="space-y-4">
               <div>
@@ -397,7 +397,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
       <motion.main initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 180, damping: 22 }} className="flex-grow" style={{ willChange: "transform" }}>
         {isInitialLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-             <div className="w-16 h-16 border-4 border-slate-200 border-t-luxury-green rounded-full animate-spin mb-4 mx-auto"></div>
+             <div className="w-16 h-16 border-4 border-slate-200 border-t-brand-green rounded-full animate-spin mb-4 mx-auto"></div>
              <p className="text-xl font-bold text-slate-900">CapiMercado: Preparando vitrinas...</p>
           </div>
         ) : (<>
@@ -629,58 +629,7 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
         </section>
       </>)}</motion.main>
 
-      {/* --- FOOTER --- */}
-      <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-8 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-slate-900 rounded flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">C</span>
-                </div>
-                <span className="text-lg font-bold text-slate-900">CapiMercado</span>
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                El ecosistema de tecnología de alta gama líder en Venezuela. Calidad certificada y entregas seguras.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Compañía</h4>
-              <ul className="space-y-2 text-sm text-slate-500">
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">Sobre Nosotros</li>
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">Sedes</li>
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">ADJML LLC</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Soporte</h4>
-              <ul className="space-y-2 text-sm text-slate-500">
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">Garantía Premium</li>
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">Métodos de Envío</li>
-                <li className="hover:text-slate-900 cursor-pointer transition-colors">Preguntas Frecuentes</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Newsletter</h4>
-              <p className="text-sm text-slate-500 mb-4">Recibe ofertas exclusivas de tecnología.</p>
-              <div className="flex gap-2">
-                <input type="email" placeholder="tu@email.com" className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-2 focus:ring-slate-900 transition-shadow" />
-                <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors">Unirme</button>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 text-xs uppercase tracking-widest font-semibold">
-            <p>© 2026 CapiMercado. Proyecto por ADJML LLC.</p>
-            <div className="flex gap-6">
-              <span className="hover:text-slate-600 cursor-pointer transition-colors">Instagram</span>
-              <span className="hover:text-slate-600 cursor-pointer transition-colors">Twitter</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
