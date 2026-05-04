@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Palette, MessageCircle, Smartphone } from 'lucide-react';
+import { Palette, MessageCircle, Smartphone, Tag } from 'lucide-react';
 import pb from '../../lib/pocketbase';
 import { getImageUrl } from '../../lib/utils';
 import SafeImage from '../SafeImage';
@@ -9,6 +9,16 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
   const [isUpdatingBrand, setIsUpdatingBrand] = useState(false);
   const [previewBanner, setPreviewBanner] = useState(null);
   const [previewLogo, setPreviewLogo] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState(
+    Array.isArray(selectedStore.category) ? selectedStore.category : []
+  );
+
+  useEffect(() => {
+    pb.collection('categories').getFullList().then(cats => {
+      setAllCategories(cats.filter(c => !c.parent_id)); // Only root categories
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -17,11 +27,35 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
     };
   }, [previewBanner, previewLogo]);
 
+  const toggleCategory = (catId) => {
+    setSelectedCategories(prev => 
+      prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+    );
+  };
+
   const handleUpdateBrand = async (e) => {
     e.preventDefault();
+    if (selectedCategories.length === 0) {
+      toast.error('Debes seleccionar al menos una categoría para tu tienda.');
+      return;
+    }
     setIsUpdatingBrand(true);
     const formElement = e.target;
     const fd = new FormData(formElement);
+    
+    // CRITICAL: Remove empty file inputs to prevent PocketBase from clearing existing files
+    const bannerFile = fd.get('banner');
+    if (bannerFile && bannerFile instanceof File && bannerFile.size === 0) {
+      fd.delete('banner');
+    }
+    const logoFile = fd.get('logo');
+    if (logoFile && logoFile instanceof File && logoFile.size === 0) {
+      fd.delete('logo');
+    }
+    
+    // Remove any existing category entries and add selected ones
+    fd.delete('category');
+    selectedCategories.forEach(catId => fd.append('category', catId));
 
     try {
       const updatedStore = await pb.collection('stores').update(selectedStore.id, fd);
@@ -116,6 +150,37 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
             <label className="text-xs font-bold text-slate-500 mb-2 block">Descripción de la Marca (Bio)</label>
             <textarea name="description" defaultValue={selectedStore.description} rows="3" placeholder="Somos distribuidores oficiales..." className="w-full bg-white border border-slate-200 rounded-[24px] px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 resize-none shadow-sm"></textarea>
           </div>
+        </div>
+
+        {/* ===== MANDATORY CATEGORY SELECTION ===== */}
+        <div className="pt-8 border-t border-slate-100">
+          <label className="text-xs font-bold text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
+            <Tag size={16} className="text-emerald-600" /> Categorías de tu Tienda (Obligatorio)
+          </label>
+          <p className="text-xs text-slate-400 mb-4">Selecciona al menos una categoría para que los compradores puedan encontrarte en el directorio.</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {allCategories.map(cat => {
+              const isSelected = selectedCategories.includes(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => toggleCategory(cat.id)}
+                  className={`p-3 rounded-2xl border-2 text-sm font-bold transition-all text-left ${
+                    isSelected
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                  }`}
+                >
+                  <span className="block">{cat.name}</span>
+                  {isSelected && <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-widest">✓ Seleccionado</span>}
+                </button>
+              );
+            })}
+          </div>
+          {selectedCategories.length === 0 && (
+            <p className="mt-2 text-xs text-red-500 font-bold">⚠️ Debes seleccionar al menos una categoría.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-slate-100">

@@ -50,6 +50,10 @@ export default function ProductFormModal({ product, selectedStoreId, onClose, on
     }
 
     fd.append('store', selectedStoreId);
+    // Auto-list new products (make visible in marketplace)
+    if (!product) {
+      fd.append('listed', true);
+    }
     fd.delete('images');
     
     if (newProductImages.length > 0) {

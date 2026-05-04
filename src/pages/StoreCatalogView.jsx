@@ -22,22 +22,27 @@ export default function StoreCatalogView() {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState('Todos');
+  const [allCategories, setAllCategories] = useState([]);
 
   useEffect(() => {
     const loadStoreData = async () => {
       try {
         let storeRecord;
         if (slug) {
-          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`, { expand: 'category' });
+          storeRecord = await pb.collection('stores').getFirstListItem(`slug="${slug}"`);
         } else {
           return;
         }
-        const productsRecord = await pb.collection('products').getFullList({ 
-          filter: `store = "${storeRecord.id}"`,
-          expand: 'store,category' 
-        });
+        const [productsRecord, categoriesRecord] = await Promise.all([
+          pb.collection('products').getFullList({ 
+            filter: `store = "${storeRecord.id}"`,
+            expand: 'store,category' 
+          }),
+          pb.collection('categories').getFullList()
+        ]);
         setStore(storeRecord);
         setProducts(productsRecord);
+        setAllCategories(categoriesRecord);
       } catch (error) {
         // Silent catch
       }
@@ -94,20 +99,20 @@ export default function StoreCatalogView() {
           <div className="flex-1 text-center md:text-left mb-2 md:mb-4">
             <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">{store.name}</h1>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
-              {store.expand?.category && Array.isArray(store.expand.category) ? (
-                store.expand.category.map(cat => {
+              {(() => {
+                // Resolve category - could be a string ID, an array of IDs, or an expanded relation
+                const catIds = Array.isArray(store.category) ? store.category : (store.category ? [store.category] : []);
+                return catIds.map(catId => {
+                  const cat = allCategories.find(c => c.id === catId);
+                  if (!cat) return null;
                   const Icon = getCategoryIcon(cat.name);
                   return (
-                    <span key={cat.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                    <span key={catId} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
                       <Icon size={12} /> {cat.name}
                     </span>
                   );
-                })
-              ) : (
-                store.category && (
-                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{store.category}</span>
-                )
-              )}
+                });
+              })()}
               {store.location && (
                 <span className="inline-flex items-center gap-1.5 text-slate-500 text-sm font-medium">
                   <MapPin size={16}/> {store.location}

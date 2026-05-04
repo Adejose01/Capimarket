@@ -27,7 +27,9 @@ export default function ProductCard({
     e.stopPropagation();
     const rawPhone = producto.expand?.store?.whatsapp || "";
     const telefono = formatWhatsAppNumber(rawPhone);
-    const mensaje = `Hola! Me interesa el producto: ${producto.name}. Aún está disponible?`;
+    const nombreTienda = producto.expand?.store?.name || '';
+    const precio = (producto.price / 100).toFixed(2);
+    const mensaje = `Hola ${nombreTienda}, vi el *${producto.name}* publicado en CapiMercado por *${precio} USDT*. ¿Aún disponible?`;
     window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
@@ -72,7 +74,11 @@ export default function ProductCard({
       
       <div className="p-4 flex-1 flex flex-col z-10 bg-white dark:bg-[#0a0a0a]">
         <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1 sm:mb-2 text-slate-500 truncate">
-          {product.brand || 'Tech'} • <span style={{ color: storeBrandColor }}>{product.expand?.store?.name || 'CapiMercado'}</span>
+          {product.brand || 'Tech'} • <span 
+            style={{ color: storeBrandColor }} 
+            className="cursor-pointer hover:underline"
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.expand?.store?.slug || product.expand?.store?.id}`); }}
+          >{product.expand?.store?.name || 'CapiMercado'}</span>
         </p>
         <h3 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white mb-2 line-clamp-2 leading-tight tracking-tight">{product.name}</h3>
         

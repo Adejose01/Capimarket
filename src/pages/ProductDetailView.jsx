@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, X } from 'lucide-react';
+import { ArrowLeft, MessageCircle, X, DollarSign, Camera, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import pb from '../lib/pocketbase';
 import { getImageUrl, formatWhatsAppNumber, SPRING_SLOW } from '../lib/utils';
@@ -29,12 +29,27 @@ export default function ProductDetailView() {
     fetchProduct();
   }, [id]);
 
-  const comprarPorWhatsApp = () => {
+  const contactarWhatsApp = (tipo) => {
     if (!product) return;
     const rawPhone = product.expand?.store?.whatsapp || "";
     const telefono = formatWhatsAppNumber(rawPhone);
     const nombreTienda = product.expand?.store?.name || "Tienda";
-    const mensaje = `Hola ${nombreTienda}, me interesa el ${product.name} que vi en CapiMercado por ${(product.price / 100).toFixed(2)} USDT. ¿Sigue disponible?`;
+    const precio = (product.price / 100).toFixed(2);
+
+    let mensaje = '';
+    switch (tipo) {
+      case 'oferta':
+        mensaje = `Hola ${nombreTienda}, vi el *${product.name}* publicado en CapiMercado por *${precio} USDT*. ¿Aún disponible?`;
+        break;
+      case 'disponibilidad':
+        mensaje = `Hola ${nombreTienda}, me interesa el *${product.name}* (${precio} USDT) que vi en CapiMercado. ¿Cuándo podría verlo o retirarlo?`;
+        break;
+      case 'fotos':
+        mensaje = `Hola ${nombreTienda}, estoy interesado/a en el *${product.name}* de CapiMercado. ¿Podrían enviarme más fotos del estado actual del producto?`;
+        break;
+      default:
+        mensaje = `Hola ${nombreTienda}, vi el *${product.name}* publicado en CapiMercado por *${precio} USDT*. ¿Aún disponible?`;
+    }
     
     try {
       pb.collection('orders').create({
@@ -74,6 +89,8 @@ export default function ProductDetailView() {
     return null;
   }
 
+  const isOutOfStock = product.stock === 'out_of_stock';
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
       
@@ -92,7 +109,7 @@ export default function ProductDetailView() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={SPRING_SLOW}
-        className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto bg-white dark:bg-[#0a0a0a] rounded-2xl shadow-2xl flex flex-col no-scrollbar"
+        className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto bg-white dark:bg-[#0a0a0a] rounded-2xl shadow-2xl flex flex-col no-scrollbar pb-0 md:pb-0"
       >
         
         {/* Nav Header Sticky */}
@@ -105,7 +122,7 @@ export default function ProductDetailView() {
           </button>
         </div>
 
-        <div className="p-6 md:p-10 w-full">
+        <div className="p-6 md:p-10 w-full pb-32 md:pb-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
             
             {/* Lado Izquierdo: Galería de Fotos */}
@@ -135,9 +152,29 @@ export default function ProductDetailView() {
 
             {/* Lado Derecho: Info y Botones */}
             <div className="flex flex-col justify-center">
-              <p className="text-sm font-bold uppercase tracking-widest mb-2 items-center gap-1 flex" style={{ color: product.expand?.store?.primaryColor || '#3b82f6' }}>
-                {product.expand?.store?.name || 'CapiMercado'}
-              </p>
+              {/* Store badge + Verified */}
+              <div className="flex items-center gap-2 mb-2">
+                <p 
+                  className="text-sm font-bold uppercase tracking-widest flex items-center gap-1 cursor-pointer hover:underline transition-all" 
+                  style={{ color: product.expand?.store?.primaryColor || '#3b82f6' }}
+                  onClick={() => navigate(`/stores/${product.expand?.store?.slug || product.expand?.store?.id}`)}
+                >
+                  {product.expand?.store?.name || 'CapiMercado'}
+                </p>
+                {product.expand?.store?.verified && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[9px] font-extrabold uppercase tracking-widest">
+                    ✓ Verificado
+                  </span>
+                )}
+              </div>
+
+              {/* Trust signal: member since */}
+              {product.expand?.store?.created && (
+                <p className="text-[10px] font-medium text-slate-400 mb-3">
+                  Tienda miembro desde {new Date(product.expand.store.created).toLocaleDateString('es', { month: 'long', year: 'numeric' })}
+                </p>
+              )}
+
               <h1 className="text-3xl md:text-5xl font-black mb-4 text-slate-900 dark:text-white tracking-tight leading-tight">{product.name}</h1>
               <div className="mb-8 flex items-baseline gap-2">
                 <PriceDisplay amount={product.price} className="scale-125 origin-left" />
@@ -160,18 +197,65 @@ export default function ProductDetailView() {
                 </div>
               </div>
 
-              <div className="mt-auto">
+              {/* Desktop CTA — Structured Contact Buttons */}
+              <div className="hidden md:flex flex-col gap-3 mt-auto">
                 <button
-                  onClick={comprarPorWhatsApp}
-                  disabled={product.stock === 'out_of_stock'}
-                  className="w-full bg-[#050505] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed text-[#FDFBF7] font-bold py-4 px-8 rounded-full shadow-premium flex items-center justify-center gap-3 transition-all duration-300 md:hover:-translate-y-1 active:scale-95 text-lg"
+                  onClick={() => contactarWhatsApp('oferta')}
+                  disabled={isOutOfStock}
+                  className="w-full bg-[#050505] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed text-[#FDFBF7] font-bold py-4 px-8 rounded-full shadow-premium flex items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1 active:scale-95 text-lg"
                 >
-                  <MessageCircle size={24} className="text-brand-green" /> 
-                  {product.stock === 'out_of_stock' ? 'Agotado' : 'Comprar vía WhatsApp'}
+                  <MessageCircle size={22} className="text-emerald-400" /> 
+                  {isOutOfStock ? 'Agotado' : 'Comprar por WhatsApp'}
                 </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => contactarWhatsApp('disponibilidad')}
+                    disabled={isOutOfStock}
+                    className="bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-900 font-bold py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all text-sm"
+                  >
+                    <Calendar size={16} /> Consultar Disponibilidad
+                  </button>
+                  <button
+                    onClick={() => contactarWhatsApp('fotos')}
+                    disabled={isOutOfStock}
+                    className="bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-900 font-bold py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all text-sm"
+                  >
+                    <Camera size={16} /> Pedir Más Fotos
+                  </button>
+                </div>
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* ============================================ */}
+        {/* STICKY CTA — Mobile Only (Fixed at Bottom)  */}
+        {/* ============================================ */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[110] bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 px-4 py-3 safe-area-bottom shadow-2xl shadow-black/20">
+          <div className="flex gap-2">
+            <button
+              onClick={() => contactarWhatsApp('oferta')}
+              disabled={isOutOfStock}
+              className="flex-1 bg-[#050505] text-white font-bold py-3.5 px-4 rounded-full flex items-center justify-center gap-2 text-sm disabled:opacity-50 active:scale-95 transition-transform"
+            >
+              <MessageCircle size={18} className="text-emerald-400" />
+              {isOutOfStock ? 'Agotado' : 'Comprar por WhatsApp'}
+            </button>
+            <button
+              onClick={() => contactarWhatsApp('disponibilidad')}
+              disabled={isOutOfStock}
+              className="bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-full flex items-center justify-center gap-1.5 text-xs disabled:opacity-50 active:scale-95 transition-transform"
+            >
+              <Calendar size={14} /> Horario
+            </button>
+            <button
+              onClick={() => contactarWhatsApp('fotos')}
+              disabled={isOutOfStock}
+              className="bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-full flex items-center justify-center gap-1.5 text-xs disabled:opacity-50 active:scale-95 transition-transform"
+            >
+              <Camera size={14} /> Fotos
+            </button>
           </div>
         </div>
       </motion.div>
