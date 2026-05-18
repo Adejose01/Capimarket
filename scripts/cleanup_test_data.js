@@ -52,7 +52,7 @@ async function run() {
   }
 
   const testPatterns = [
-    'e2e_test_', 'loadtest_', 'photobomb_', 'scale_', 'E2E', 'LoadTest', 'Mass'
+    'e2e_test_', 'loadtest_', 'photobomb_', 'scale_', 'E2E', 'LoadTest', 'Mass', 'Scale'
   ];
 
   // ── Eliminar productos de prueba ──

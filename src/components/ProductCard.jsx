@@ -74,7 +74,7 @@ export default function ProductCard({
       
       <div className="p-4 flex-1 flex flex-col z-10 bg-white dark:bg-[#0a0a0a]">
         <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1 sm:mb-2 text-slate-500 truncate">
-          {product.brand || 'Tech'} • <span 
+          {product.brand ? `${product.brand} • ` : ''}<span 
             style={{ color: storeBrandColor }} 
             className="cursor-pointer hover:underline"
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.expand?.store?.slug || product.expand?.store?.id}`); }}
