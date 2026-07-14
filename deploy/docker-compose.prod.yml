@@ -1,0 +1,44 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_PB_URL=${VITE_PB_URL:-/}
+    # En producción aislamos el puerto 3000; solo Nginx habla con el frontend
+    expose:
+      - "80"
+    depends_on:
+      - pocketbase
+    restart: always
+
+  pocketbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.pb
+    ports:
+      - "8090:8090"
+    env_file:
+      - .env
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      # ... resto de tus variables de entorno ...
+    volumes:
+      # Rutas de producción apuntando correctamente a la subcarpeta 'apps'
+      - ./apps/pocketbase/pb_data:/pb/pb_data
+      - ./apps/pocketbase/pb_migrations:/pb/pb_migrations
+      - ./apps/pocketbase/pb_hooks:/pb/pb_hooks
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      # Apunta correctamente a la subcarpeta deploy en la raíz
+      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - pocketbase
+    restart: always

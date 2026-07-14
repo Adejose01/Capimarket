@@ -1,0 +1,63 @@
+{
+  "name": "CapiMarket Development Environment",
+  // Indica que usaremos el docker-compose global para levantar el entorno
+  "dockerComposeFile": "../docker-compose.yml",
+  "updateRemoteUserUID": false,
+  
+  // Especifica cuál servicio de tu docker-compose será el entorno de desarrollo principal (donde programarás)
+  // Normalmente es el servicio de tu frontend/app de Node
+  "service": "frontend",
+  
+  // La ruta dentro del contenedor donde se montará tu espacio de trabajo
+  "workspaceFolder": "/workspace",
+  
+
+  "runServices": ["frontend", "pocketbase", "nginx"],
+
+   "containerEnv": {
+    "HOME": "/home/node"
+  },
+
+  // Configuraciones específicas para VS Code dentro del contenedor
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // Asegura que las herramientas utilicen el binario de Node del contenedor
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ]
+      },
+      // Extensiones esenciales para tu flujo de trabajo que se instalarán automáticamente
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "mechatroner.rainbow-csv",
+        "esbenp.prettier-vscode",
+        "dracula-theme.theme-dracula"
+      ]
+    }
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+
+  // Puertos que quieres exponer localmente desde el contenedor
+  // 5173 (Vite), 8080/8090 (PocketBase), 80 (Nginx). Ajusta según tus puertos reales.
+  "forwardPorts": [5173, 8090, 8080, 80],
+
+  // Comentario opcional o comando a ejecutar después de que el contenedor se cree por primera vez
+  // Descomenta la siguiente línea si quieres que instale las dependencias de node automáticamente al iniciar:
+  // "postCreateCommand": "npm install",
+
+  // Ejecutar como usuario no-root por seguridad (si tu Dockerfile de Node lo soporta, comúnmente 'node')
+  "remoteUser": "node"
+}

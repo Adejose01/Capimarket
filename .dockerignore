@@ -1,6 +1,22 @@
+# Dependencias locales
 node_modules
-
-.git
-.env
-pb_data
+npm-debug.log
 package-lock.json
+
+# Datos persistentes de bases de datos locales
+pb/pb_data
+postgres-data
+
+# Entorno de desarrollo
+.devcontainer
+.git
+.github
+.vscode
+
+# Archivos de configuración locales sensibles
+.env
+.env.local
+
+# Salidas de compilación locales
+dist
+build
