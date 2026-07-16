@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, X, DollarSign, Camera, Calendar } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import pb from '../lib/pocketbase';
-import { getImageUrl, formatWhatsAppNumber, SPRING_SLOW } from '../lib/utils';
-import PriceDisplay from '../components/PriceDisplay';
+import pb from '@/lib/pocketbase';
+import { getImageUrl, formatWhatsAppNumber, SPRING_SLOW } from '@/lib/utils';
+import PriceDisplay from '@/components/common/PriceDisplay';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

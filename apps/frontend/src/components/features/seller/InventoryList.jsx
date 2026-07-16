@@ -1,8 +1,8 @@
 import React from 'react';
 import { Package, Edit2, Trash2 } from 'lucide-react';
-import SafeImage from '../SafeImage';
-import { getImageUrl } from '../../lib/utils';
-import pb from '../../lib/pocketbase';
+import SafeImage from '../../common/SafeImage';
+import { getImageUrl } from '../../../lib/utils';
+import pb from '../../../lib/pocketbase';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

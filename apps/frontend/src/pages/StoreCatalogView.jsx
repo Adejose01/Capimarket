@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, ArrowLeft, Filter } from 'lucide-react';
-import pb from '../lib/pocketbase';
-import { getImageUrl, getCategoryIcon } from '../lib/utils';
-import ProductCard from '../components/ProductCard';
-import PriceDisplay from '../components/PriceDisplay';
-import SafeImage from '../components/SafeImage';
+import pb from '@/lib/pocketbase';
+import { getImageUrl, getCategoryIcon } from '@/lib/utils';
+import ProductCard from '@/components/features/marketplace/ProductCard';
+import PriceDisplay from '@/components/common/PriceDisplay';
+import SafeImage from '@/components/common/SafeImage';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

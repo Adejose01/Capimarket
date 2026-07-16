@@ -7,9 +7,9 @@ import {
   Store, Lock, ChevronRight, LogOut, ArrowLeft, X,
   Settings
 } from 'lucide-react';
-import pb from '../lib/pocketbase';
-import useAuthStore from '../store/useAuthStore';
-import useCategories from '../hooks/useCategories';
+import pb from '@/lib/pocketbase';
+import useAuthStore from '@/store/useAuthStore';
+import useCategories from '@/hooks/useCategories';
 
 export default function BuyerPortalView() {
   const [myStores, setMyStores] = useState([]);

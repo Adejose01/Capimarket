@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, Eye, Database, Cookie } from 'lucide-react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import Navbar from '@/components/common/Navbar';
+import Footer from '@/components/common/Footer';
 
 export default function PrivacyView() {
   const navigate = useNavigate();

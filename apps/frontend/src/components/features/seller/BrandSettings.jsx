@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Palette, MessageCircle, Smartphone, Tag } from 'lucide-react';
-import pb from '../../lib/pocketbase';
-import { getImageUrl } from '../../lib/utils';
-import SafeImage from '../SafeImage';
+import pb from '@/lib/pocketbase';
+import { getImageUrl } from '@/lib/utils';
+import SafeImage from '@/components/common/SafeImage';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

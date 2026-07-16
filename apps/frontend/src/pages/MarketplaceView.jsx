@@ -4,18 +4,18 @@ import { toast } from 'sonner';
 import {
   Search, ArrowLeft, X, Plus, Filter, MapPin, MessageCircle, ChevronRight, User, Menu
 } from 'lucide-react';
-import pb from '../lib/pocketbase';
+import pb from '@/lib/pocketbase';
 import { getImageUrl, SPRING, SPRING_SLOW, getCategoryIcon } from '../lib/utils';
-import useAuthStore from '../store/useAuthStore';
-import SafeImage from '../components/SafeImage';
-import HeroCinematic from '../components/HeroCinematic';
-import CategoryBentoGrid from '../components/CategoryBentoGrid';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import ProductCard from '../components/ProductCard';
-import ProductGrid from '../components/marketplace/ProductGrid';
-import PriceDisplay from '../components/PriceDisplay';
-import useDebounce from '../hooks/useDebounce';
+import useAuthStore from '@/store/useAuthStore';
+import SafeImage from '@/components/common/SafeImage';
+import HeroCinematic from '@/components/HeroCinematic';
+import CategoryBentoGrid from '@/components/features/marketplace/CategoryBentoGrid';
+import Navbar from '@/components/common/Navbar';
+import Footer from '@/components/common/Footer';
+import ProductCard from '@/components/features/marketplace/ProductCard';
+import ProductGrid from '@/components/features/marketplace/ProductGrid';
+import PriceDisplay from '@/components/common/PriceDisplay';
+import useDebounce from '@/hooks/useDebounce';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 
@@ -43,8 +43,6 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-
-
   // Buscador y Filtros
   const [searchType, setSearchType] = useState('products');
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,8 +61,6 @@ export default function MarketplaceView({ exclusiveStoreId = null, exclusiveStor
   const catalogRef = useRef(null);
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(searchTerm, 300);
-
-  console.log("🔌 URL de PocketBase detectada por Vite:", import.meta.env.VITE_PB_URL); 
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 60);

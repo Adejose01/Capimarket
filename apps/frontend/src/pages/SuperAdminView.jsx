@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ShieldAlert, Store, ArrowLeft, Trash2, Activity, TrendingUp } from 'lucide-react';
-import pb from '../lib/pocketbase';
-import { getImageUrl } from '../lib/utils';
-import SafeImage from '../components/SafeImage';
+import pb from '@/lib/pocketbase';
+import { getImageUrl } from '@/lib/utils';
+import SafeImage from '@/components/common/SafeImage';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

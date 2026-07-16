@@ -10,7 +10,7 @@ import ProductDetailView from './pages/ProductDetailView';
 import PrivacyView from './pages/PrivacyView';
 import TermsView from './pages/TermsView';
 
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 export default function App() {
   const location = useLocation();

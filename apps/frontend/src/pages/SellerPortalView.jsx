@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Package, LogOut, ArrowLeft, Key, Plus, Settings, LayoutGrid } from 'lucide-react';
-import pb from '../lib/pocketbase';
-import { getImageUrl } from '../lib/utils';
-import useAuthStore from '../store/useAuthStore';
-import SafeImage from '../components/SafeImage';
-import BrandSettings from '../components/seller/BrandSettings';
-import InventoryList from '../components/seller/InventoryList';
-import ProductFormModal from '../components/seller/ProductFormModal';
+import pb from '@/lib/pocketbase';
+import { getImageUrl } from '@/lib/utils';
+import useAuthStore from '@/store/useAuthStore';
+import SafeImage from '@/components/common/SafeImage';
+import BrandSettings from '@/components/features/seller/BrandSettings';
+import InventoryList from '@/components/features/seller/InventoryList';
+import ProductFormModal from '@/components/features/seller/ProductFormModal';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit2, X } from 'lucide-react';
-import pb from '../../lib/pocketbase';
-import { getImageUrl } from '../../lib/utils';
-import useCategories from '../../hooks/useCategories';
+import pb from '@/lib/pocketbase.js';
+import { getImageUrl } from '@/lib/utils';
+import useCategories from '@/hooks/useCategories';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

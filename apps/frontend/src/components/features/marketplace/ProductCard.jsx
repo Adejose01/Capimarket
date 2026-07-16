@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
-import PriceDisplay from './PriceDisplay';
-import { SPRING, formatWhatsAppNumber } from '../lib/utils';
-import OptimizedImage from './OptimizedImage';
+import PriceDisplay from '../../common/PriceDisplay';
+import { SPRING, formatWhatsAppNumber } from '../../../lib/utils';
+import OptimizedImage from '../../common/OptimizedImage';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

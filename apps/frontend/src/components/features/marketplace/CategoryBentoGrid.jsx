@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { SPRING, getCategoryIcon } from '../lib/utils';
+import { SPRING, getCategoryIcon } from '../../../lib/utils';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

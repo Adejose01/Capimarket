@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import ProductCard from '../ProductCard';
+import ProductCard from './ProductCard';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 

@@ -31,7 +31,8 @@
         "ms-azuretools.vscode-docker",
         "mechatroner.rainbow-csv",
         "esbenp.prettier-vscode",
-        "dracula-theme.theme-dracula"
+        "dracula-theme.theme-dracula",
+        "Continue.continue"
       ]
     }
   },
@@ -49,5 +50,10 @@
   // Comentario opcional o comando a ejecutar después de que el contenedor se cree por primera vez
   // Descomenta la siguiente línea si quieres que instale las dependencias de node automáticamente al iniciar:
   "postCreateCommand": "cd /workspace/apps/frontend && npm install",
-  "postAttachCommand": "cd /workspace/apps/frontend && npm run dev"
+  "postAttachCommand": "cd /workspace/apps/frontend && npm run dev",
+  "portsAttributes": {
+    "8090": {
+      "label": "8089"
+    }
+  }
 }
