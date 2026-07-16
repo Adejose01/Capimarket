@@ -6,13 +6,6 @@ Este documento detalla las tareas personales de refactorización, corrección de
 
 ## 📁 1. Arquitectura y Limpieza de Código
 
-### ▢ Organizar la estructura de carpetas en `src`
-
-- **Problema:** La raíz de `src/components` sufre de _flat-folder fatigue_ (acumulación horizontal). Componentes globales/estructurales (`Navbar`, `Footer`), utilidades de bajo nivel (`SafeImage`, `OptimizedImage`) y componentes de dominio de negocio (`ProductCard`) están mezclados en el mismo nivel.
-- **Solución:** Separar la estructura internamente en:
-  - `components/common/` (o `components/ui/`) para componentes reutilizables y sin lógica de negocio.
-  - `components/features/` para lógica agrupada por dominios (`marketplace`, `seller`, `home`).
-
 ### ▢ Regularizar solicitudes a la base de datos (PocketBase)
 
 - Optimizar, unificar y securizar las peticiones del lado del cliente hacia la base de datos al interactuar con:
