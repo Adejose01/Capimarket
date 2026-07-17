@@ -86,7 +86,7 @@ export default function AboutView() {
                 </p>
               </div>
               <button 
-                onClick={() => navigate('/register')}
+                onClick={() => navigate('/auth')}
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-98"
               >
                 Crear mi Catálogo <ArrowUpRight size={16} />

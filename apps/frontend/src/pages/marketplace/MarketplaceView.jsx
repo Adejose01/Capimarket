@@ -5,7 +5,7 @@ import {
   Search, ArrowLeft, X, Plus, Filter, MapPin, MessageCircle, ChevronRight, User, Menu
 } from 'lucide-react';
 import pb from '@/lib/pocketbase';
-import { getImageUrl, SPRING, SPRING_SLOW, getCategoryIcon } from '../lib/utils';
+import { getImageUrl, SPRING, SPRING_SLOW, getCategoryIcon } from '../../lib/utils';
 import useAuthStore from '@/store/useAuthStore';
 import SafeImage from '@/components/common/SafeImage';
 import HeroCinematic from '@/components/HeroCinematic';
