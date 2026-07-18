@@ -108,3 +108,6 @@ Este documento detalla las tareas personales de refactorización, corrección de
 
 ### Arreglar la visualizacion de los elementos en lista 
 
+
+### agregar una vista del producto en onclick para el panel de "mi inventario"
+
