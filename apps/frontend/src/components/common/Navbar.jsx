@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SPRING } from '@/lib/utils';
-import useAuthStore from '@/store/useAuthStore';
+import useAuthStore from '@/lib/useAuthStore';
 
 export default function Navbar({
   isScrolled,
