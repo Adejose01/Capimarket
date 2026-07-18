@@ -22,6 +22,15 @@ export default function Navbar({
 }) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
+  const handleLogoClick = () => {
+  if (location.pathname == '/') {
+    // 2. Si ya está en el inicio, forzamos un scroll suave hacia el tope (0,0).
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    // 3. Si viene de otra página (ej. /about o /faq), lo mandamos al inicio de forma normal.
+    navigate('/');
+  }
+};
 
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 will-change-transform ${isScrolled ? "bg-[#050505]/85 backdrop-blur-xl border-b border-white/8 shadow-lg shadow-black/20" : "bg-transparent border-b border-transparent"}`}>
@@ -35,7 +44,7 @@ export default function Navbar({
                 whileHover={{ x: -2 }}
                 whileTap={{ scale: 0.95 }}
                 transition={SPRING}
-                onClick={onResetStore}
+                onClick={handleLogoClick , console.log('clicked back button')}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white hover:bg-white/20 transition-all"
               >
                 <ArrowLeft size={16} />
@@ -43,7 +52,7 @@ export default function Navbar({
             )}
             <div
               className={`shrink-0 flex items-center gap-1.5 sm:gap-2 group ${!exclusiveStoreId ? 'cursor-pointer' : ''}`}
-              onClick={() => { onResetStore(); navigate('/'); }}
+              onClick={handleLogoClick}
             >
               <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-md sm:rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
                 <span className="text-[#050505] font-black text-sm sm:text-lg">C</span>

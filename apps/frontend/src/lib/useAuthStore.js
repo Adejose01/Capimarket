@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import pb from '../lib/pocketbase';
+import pb from '@/lib/pocketbase';
 
 const useAuthStore = create((set) => ({
   // --- Estado ---
