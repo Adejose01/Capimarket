@@ -97,3 +97,14 @@ Este documento detalla las tareas personales de refactorización, corrección de
 ### ▢ Reparar el inicio de sesión con Google (OAuth2)
 
 * Solucionar los errores de redirección, intercambio de tokens o registro automático al ingresar mediante Google.
+
+## 6. Experiencia de vendedor
+
+### - Arreglar la posibilidad de delistar un elemento
+* hay que arreglar la posibilidad de quitar un elemento del catalogo
+
+### Hacer los ajustes propios de la interfaz con los cambios en la db
+
+
+### Arreglar la visualizacion de los elementos en lista 
+
