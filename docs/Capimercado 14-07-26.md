@@ -22,6 +22,10 @@ Este documento detalla las tareas personales de refactorización, corrección de
 
 * Modificar el flujo de publicación y visualización de productos para remover la selección de color o relegarla a un plano completamente secundario/irrelevante si el artículo no lo requiere.
 
+## Centralizar logica interna de las llamadas a db
+* Hay un error estructural, y es que las peticiones a la db se estan haciendo directamente desde el mismo archivo donde se construye, inflando las lineas de codigoo por archivo. Por lo tanto hay que pasar la logica de las llamadas de la db para archivos .js para ser citados como librerias.
+
+
 ---
 
 ## 🏷️ 2. Sistema de Categorías y Tags
@@ -98,16 +102,25 @@ Este documento detalla las tareas personales de refactorización, corrección de
 
 * Solucionar los errores de redirección, intercambio de tokens o registro automático al ingresar mediante Google.
 
+---
+
 ## 6. Experiencia de vendedor
 
 ### - Arreglar la posibilidad de delistar un elemento
-* hay que arreglar la posibilidad de quitar un elemento del catalogo
+* hay que arreglar la posibilidad de quitar un elemento del catalogo.
 
 ### Hacer los ajustes propios de la interfaz con los cambios en la db
+* Despues de arreglar las categorias para que sean tags, habrá que colocar un campo donde se pueda colocar los tags y cuando se vaya escribiendo vayan apareciendo los disponibles.
 
+### Arreglar la visualizacion de los elementos en lista "listed"
+* La propiedad "listed" existe dentro de la db, pero esta no esta implementada para ser manejada por medio del panel del vendedor. El vendedor debe tener la posibilidad de subir elementos y no listarlos.
 
-### Arreglar la visualizacion de los elementos en lista 
+* Ademas dentro de la pestaña de "Mi Inventario" debe ser posible ver en la tarjeta del elemento si este está listado o no.
 
+* Tambien se puede considerar en agregar una listview donde se vean mejor las propiedades de los productos sin necesariamente tener que abrir la tarjeta.
 
-### agregar una vista del producto en onclick para el panel de "mi inventario"
+### Agregar una vista del producto en onclick para el panel de "mi inventario"
+* Al modificar los productos Hace falta salir al menú principal para ver el resultdo de como quedó la modificacion o como lo verá el comprador. Esto es facilmente arreglable haciendo que la propiedad onclick de las tarjetas sea la de visualizar como sera la tarjeta para los clientes.
 
+### Corregir que las categorias/tags esten agregadas al abrir la configuracion de la store
+* Cuando se va a modificar la tienda hay propiedades de esta que no aparecen seleccionadas o que no heredan la configuracion previa de la db para que el vendedor este conciente de cual es la configuracion ya selaccionada.
