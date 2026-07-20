@@ -27,6 +27,9 @@ import PriceDisplay from "@/components/common/PriceDisplay";
 import useDebounce from "@/hooks/useDebounce";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+// Services
+import { marketplaceService } from "@/lib/services/MarketplaceService";
+import { useMarketplaceFilters } from "@/hooks/useMarketplaceFilters"; // Ajusta la ruta según tu estructura
 
 const IconInstagram = ({ size = 24, className = "" }) => (
   <svg
@@ -82,20 +85,25 @@ export default function MarketplaceView({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Buscador y Filtros
   const [searchType, setSearchType] = useState("products");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Todos");
 
-  // Filtros Pro
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [filterCond, setFilterCond] = useState("all");
-  const [filterLoc, setFilterLoc] = useState("all");
-  const [sortOrder, setSortOrder] = useState("");
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const { filterState, dispatch } = useMarketplaceFilters();
+
+  // La desestructuración se queda exactamente igual para no romper el JSX:
+  const {
+    activeCategory,
+    minPrice,
+    maxPrice,
+    filterCond,
+    filterLoc,
+    sortOrder,
+    currentPage,
+  } = filterState;
+
   const [totalPages, setTotalPages] = useState(1);
 
   const catalogRef = useRef(null);
@@ -111,18 +119,19 @@ export default function MarketplaceView({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Carga inicial de datos y manejo de slugs exclusivos
+  // Carga inicial de categorías y tiendas
   useEffect(() => {
     const init = async () => {
       try {
-        const [cats, strs] = await Promise.all([
-          pb.collection("categories").getFullList(),
-          pb.collection("stores").getFullList(),
-        ]);
+        // 1. Usamos el servicio estructurado
+        // hace galta eliminar el rejuntamiento entre categorias y tiendas.
+        const { categories: cats, stores: strs } =
+          await marketplaceService.getInitialData();
         setCategories(cats);
         setStores(strs);
 
-        // Si hay slug/id exclusivo, cargar esa tienda
+        // 2. Para buscar la tienda exclusiva, puedes dejar el buscador de pb aquí temporalmente
+        // o añadir un método como marketplaceService.getStoreBySlug() más adelante.
         if (exclusiveStoreSlug) {
           const st = await pb
             .collection("stores")
@@ -153,90 +162,47 @@ export default function MarketplaceView({
     }
   }, [debouncedSearchTerm]);
 
-  // Carga de productos Paginada y Filtrada
   useEffect(() => {
     const loadProducts = async () => {
-      setIsLoading(true);
+      setIsLoading(true); //
       try {
-        let filterParams = 'store.status = "approved" && listed = true';
+        const result = await marketplaceService.getProducts({
+          page: currentPage, //
+          perPage: 20,
+          searchTerm: debouncedSearchTerm, //[cite: 1]
+          activeCategory, //[cite: 1]
+          minPrice, //[cite: 1]
+          maxPrice, //[cite: 1]
+          filterCond, //[cite: 1]
+          filterLoc, //[cite: 1]
+          sortOrder, //[cite: 1]
+          exclusiveStoreId, //[cite: 1]
+          activeStoreId: activeStore ? activeStore.id : null, //[cite: 1]
+        });
 
-        if (exclusiveStoreId) {
-          filterParams += ` && store = "${exclusiveStoreId}"`;
-        } else if (activeStore) {
-          filterParams += ` && store = "${activeStore.id}"`;
-        }
-
-        if (debouncedSearchTerm) {
-          filterParams += ` && (name ~ "${debouncedSearchTerm}" || brand ~ "${debouncedSearchTerm}")`;
-        }
-        if (activeCategory && activeCategory !== "Todos") {
-          const selectedCat = categories.find((c) => c.name === activeCategory);
-          if (selectedCat) {
-            if (!selectedCat.parent_id) {
-              // Búsqueda recursiva: categoría raíz o hijos de esta raíz
-              filterParams += ` && (category = "${selectedCat.id}" || category.parent_id = "${selectedCat.id}")`;
-            } else {
-              filterParams += ` && category = "${selectedCat.id}"`;
-            }
-          }
-        }
-        if (minPrice !== "") {
-          filterParams += ` && price >= ${Number(minPrice) * 100}`;
-        }
-        if (maxPrice !== "") {
-          filterParams += ` && price <= ${Number(maxPrice) * 100}`;
-        }
-        if (filterCond && filterCond !== "all") {
-          filterParams += ` && condition = "${filterCond}"`;
-        }
-        if (filterLoc && filterLoc !== "all") {
-          filterParams += ` && store.location = "${filterLoc}"`;
-        }
-
-        const productsRecord = await pb
-          .collection("products")
-          .getList(currentPage, 20, {
-            expand: "store,category",
-            filter: filterParams,
-            requestKey: null,
-            ...(sortOrder ? { sort: sortOrder } : {}),
-          });
-
-        setProducts(productsRecord.items);
-        setTotalPages(productsRecord.totalPages);
+        setProducts(result.items); //[cite: 1]
+        setTotalPages(result.totalPages); //[cite: 1]
       } catch (error) {
-        console.log(error);
+        console.error("Error cargando productos:", error); //[cite: 1]
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); //[cite: 1]
       }
     };
-    loadProducts();
+
+    loadProducts(); //[cite: 1]
+
+    // Cambiamos 'filterState' por sus valores primitivos reales:
   }, [
     currentPage,
     debouncedSearchTerm,
-    activeStore,
     activeCategory,
     minPrice,
     maxPrice,
     filterCond,
     filterLoc,
     sortOrder,
+    activeStore,
     exclusiveStoreId,
-    categories,
-  ]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    debouncedSearchTerm,
-    activeStore,
-    activeCategory,
-    minPrice,
-    maxPrice,
-    filterCond,
-    filterLoc,
-    sortOrder,
   ]);
 
   // Listas Dinámicas — Solo mostramos los Rubros (Categorías Raíz) en la barra superior
@@ -338,7 +304,10 @@ export default function MarketplaceView({
                   onClick={() => {
                     setActiveStore(null);
                     setSearchType("products");
-                    setActiveCategory("Todos");
+                    dispatch({
+                      type: "SET_FILTER",
+                      payload: { key: "activeCategory", value: "Todos" },
+                    });
                     navigate("/");
                   }}
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white hover:bg-white/20 transition-all"
@@ -352,7 +321,10 @@ export default function MarketplaceView({
                   setActiveStore(null);
                   setSearchType("products");
                   setSearchTerm("");
-                  setActiveCategory("Todos");
+                  dispatch({
+                    type: "SET_FILTER",
+                    payload: { key: "activeCategory", value: "Todos" },
+                  });
                   navigate("/");
                 }}
               >
@@ -402,7 +374,10 @@ export default function MarketplaceView({
                     onClick={() => {
                       setSearchType("stores");
                       setActiveStore(null);
-                      setActiveCategory("Todos");
+                      dispatch({
+                        type: "SET_FILTER",
+                        payload: { key: "activeCategory", value: "Todos" },
+                      });
                       setSearchTerm("");
                       setDebouncedSearchTerm("");
                     }}
@@ -413,7 +388,10 @@ export default function MarketplaceView({
                   <button
                     onClick={() => {
                       setSearchType("products");
-                      setActiveCategory("Todos");
+                      dispatch({
+                        type: "SET_FILTER",
+                        payload: { key: "activeCategory", value: "Todos" },
+                      });
                       setSearchTerm("");
                       setDebouncedSearchTerm("");
                     }}
@@ -484,13 +462,15 @@ export default function MarketplaceView({
               <div className="flex gap-1.5 p-1 bg-white/10 rounded-xl">
                 <button
                   onClick={() => {
+                    setActiveStore(null);
                     setSearchType("products");
-                    setActiveCategory("Todos");
-                    setSearchTerm("");
-                    setDebouncedSearchTerm("");
-                    setIsMenuOpen(false);
+                    dispatch({
+                      type: "SET_FILTER",
+                      payload: { key: "activeCategory", value: "Todos" },
+                    });
+                    navigate("/");
                   }}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${searchType === "products" ? "bg-white text-slate-900 shadow-sm" : "text-white/70"}`}
+                  className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-70 hover:opacity-100 transition-opacity"
                 >
                   Productos
                 </button>
@@ -498,7 +478,10 @@ export default function MarketplaceView({
                   onClick={() => {
                     setSearchType("stores");
                     setActiveStore(null);
-                    setActiveCategory("Todos");
+                    dispatch({
+                      type: "SET_FILTER",
+                      payload: { key: "activeCategory", value: "Todos" },
+                    });
                     setSearchTerm("");
                     setDebouncedSearchTerm("");
                     setIsMenuOpen(false);
@@ -788,7 +771,10 @@ export default function MarketplaceView({
                 <CategoryBentoGrid
                   categories={categories}
                   onSelectCategory={(cat) => {
-                    setActiveCategory(cat);
+                    dispatch({
+                      type: "SET_FILTER",
+                      payload: { key: "activeCategory", value: cat },
+                    });
                     document
                       .getElementById("catalogo")
                       .scrollIntoView({ behavior: "smooth" });
@@ -812,7 +798,10 @@ export default function MarketplaceView({
                         damping: 17,
                       }}
                       onClick={() => {
-                        setActiveCategory(cat);
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "activeCategory", value: cat },
+                        });
                         document.getElementById("catalogo").scrollIntoView({
                           behavior: "smooth",
                           block: "start",
@@ -848,7 +837,12 @@ export default function MarketplaceView({
                     {/* Sort Order Selector */}
                     <select
                       value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "sortOrder", value: e.target.value },
+                        })
+                      }
                       className="text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer text-slate-700 shadow-sm"
                     >
                       <option value="">⏱ Más recientes</option>
@@ -856,6 +850,7 @@ export default function MarketplaceView({
                       <option value="-price">💰 Precio: mayor a menor</option>
                       <option value="name">🔤 Nombre A-Z</option>
                     </select>
+
                     <button
                       onClick={() => setShowFilters(!showFilters)}
                       className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium transition-colors px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg ${showFilters ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`}
@@ -893,7 +888,15 @@ export default function MarketplaceView({
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full text-xs font-bold shadow-sm">
                         📂 {activeCategory}
                         <button
-                          onClick={() => setActiveCategory("Todos")}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FILTER",
+                              payload: {
+                                key: "activeCategory",
+                                value: "Todos",
+                              },
+                            })
+                          }
                           className="ml-1 hover:text-red-300 transition-colors"
                         >
                           ✕
@@ -908,7 +911,12 @@ export default function MarketplaceView({
                             ? "📂 Open Box"
                             : "📦 Usado"}
                         <button
-                          onClick={() => setFilterCond("all")}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FILTER",
+                              payload: { key: "filterCond", value: "all" },
+                            })
+                          }
                           className="ml-1 hover:text-red-300 transition-colors"
                         >
                           ✕
@@ -919,7 +927,12 @@ export default function MarketplaceView({
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full text-xs font-bold shadow-sm">
                         Min: ${minPrice}
                         <button
-                          onClick={() => setMinPrice("")}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FILTER",
+                              payload: { key: "minPrice", value: "" },
+                            })
+                          }
                           className="ml-1 hover:text-red-300 transition-colors"
                         >
                           ✕
@@ -930,7 +943,12 @@ export default function MarketplaceView({
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full text-xs font-bold shadow-sm">
                         Max: ${maxPrice}
                         <button
-                          onClick={() => setMaxPrice("")}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FILTER",
+                              payload: { key: "maxPrice", value: "" },
+                            })
+                          }
                           className="ml-1 hover:text-red-300 transition-colors"
                         >
                           ✕
@@ -941,7 +959,12 @@ export default function MarketplaceView({
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full text-xs font-bold shadow-sm">
                         📍 {filterLoc}
                         <button
-                          onClick={() => setFilterLoc("all")}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FILTER",
+                              payload: { key: "filterLoc", value: "all" },
+                            })
+                          }
                           className="ml-1 hover:text-red-300 transition-colors"
                         >
                           ✕
@@ -950,13 +973,34 @@ export default function MarketplaceView({
                     )}
                     <button
                       onClick={() => {
-                        setActiveCategory("Todos");
-                        setMinPrice("");
-                        setMaxPrice("");
-                        setFilterCond("all");
-                        setFilterLoc("all");
-                        setSearchTerm("");
-                        setDebouncedSearchTerm("");
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "activeCategory", value: "Todos" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "minPrice", value: "" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "maxPrice", value: "" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "filterCond", value: "all" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "filterLoc", value: "all" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "searchTerm", value: "" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "debouncedSearchTerm", value: "" },
+                        });
                       }}
                       className="text-xs font-bold text-slate-500 hover:text-red-600 underline ml-1 transition-colors"
                     >
@@ -977,7 +1021,12 @@ export default function MarketplaceView({
                         type="number"
                         placeholder="$0"
                         value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "SET_FILTER",
+                            payload: { key: "minPrice", value: e.target.value },
+                          })
+                        }
                         className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm outline-none focus:ring-1 focus:ring-slate-400"
                       />
                     </div>
@@ -989,7 +1038,12 @@ export default function MarketplaceView({
                         type="number"
                         placeholder="$9999"
                         value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "SET_FILTER",
+                            payload: { key: "maxPrice", value: e.target.value },
+                          })
+                        }
                         className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm outline-none focus:ring-1 focus:ring-slate-400"
                       />
                     </div>
@@ -999,7 +1053,15 @@ export default function MarketplaceView({
                       </label>
                       <select
                         value={filterCond}
-                        onChange={(e) => setFilterCond(e.target.value)}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "SET_FILTER",
+                            payload: {
+                              key: "filterCond",
+                              value: e.target.value,
+                            },
+                          })
+                        }
                         className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
                       >
                         <option value="all">Cualquiera</option>
@@ -1014,7 +1076,15 @@ export default function MarketplaceView({
                       </label>
                       <select
                         value={filterLoc}
-                        onChange={(e) => setFilterLoc(e.target.value)}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "SET_FILTER",
+                            payload: {
+                              key: "filterLoc",
+                              value: e.target.value,
+                            },
+                          })
+                        }
                         className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
                       >
                         {availableLocations.map((loc) => (
@@ -1028,10 +1098,22 @@ export default function MarketplaceView({
                   <div className="mt-2 sm:mt-4 flex justify-end">
                     <button
                       onClick={() => {
-                        setMinPrice("");
-                        setMaxPrice("");
-                        setFilterCond("all");
-                        setFilterLoc("all");
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "minPrice", value: "" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "maxPrice", value: "" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "filterCond", value: "all" },
+                        });
+                        dispatch({
+                          type: "SET_FILTER",
+                          payload: { key: "filterLoc", value: "all" },
+                        });
                       }}
                       className="text-xs font-bold text-slate-500 hover:text-slate-900 underline"
                     >
@@ -1052,7 +1134,12 @@ export default function MarketplaceView({
                         {activeCategory}
                       </span>
                       <button
-                        onClick={() => setActiveCategory("Todos")}
+                        onClick={() =>
+                          dispatch({
+                            type: "SET_FILTER",
+                            payload: { key: "activeCategory", value: "Todos" },
+                          })
+                        }
                         className="text-xs underline hover:text-slate-900"
                       >
                         Ver todas
@@ -1154,17 +1241,17 @@ export default function MarketplaceView({
 
               {/* RENDERING PRODUCTS */}
               {searchType === "products" && (
-                <>
-                  <ProductGrid
-                    products={filteredProducts}
-                    isLoading={isLoading}
-                    activeStoreName={activeStore ? activeStore.name : null}
-                    getImageUrl={getImageUrl}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setPage={setCurrentPage}
-                  />
-                </>
+                <ProductGrid
+                  products={filteredProducts}
+                  isLoading={isLoading}
+                  activeStoreName={activeStore ? activeStore.name : null}
+                  getImageUrl={getImageUrl}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setPage={(page) =>
+                    dispatch({ type: "SET_PAGE", payload: page })
+                  } // Cambiado aquí
+                />
               )}
             </section>
           </>
