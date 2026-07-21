@@ -6,15 +6,15 @@
 
 ## 1. Stack Técnico
 
-| Capa | Tecnología | Versión |
-|---|---|---|
-| Framework UI | React | ^19 |
-| Build Tool | Vite | ^6 |
-| Estilos | Tailwind CSS | ^4 |
-| Animaciones | Framer Motion | instalada |
-| Iconos | Lucide React | instalada |
-| Backend/DB | PocketBase | SDK `pocketbase` |
-| Gráficos | Recharts | instalada |
+| Capa         | Tecnología    | Versión          |
+| ------------ | ------------- | ---------------- |
+| Framework UI | React         | ^19              |
+| Build Tool   | Vite          | ^6               |
+| Estilos      | Tailwind CSS  | ^4               |
+| Animaciones  | Framer Motion | instalada        |
+| Iconos       | Lucide React  | instalada        |
+| Backend/DB   | PocketBase    | SDK `pocketbase` |
+| Gráficos     | Recharts      | instalada        |
 
 ---
 
@@ -22,7 +22,7 @@
 
 ```js
 // App.jsx — línea 18
-const pb = new PocketBase('https://capimercado.com');
+const pb = new PocketBase("https://capimercado.com");
 ```
 
 > **El SDK se conecta automáticamente** al dominio de producción. Nginx en tu servidor rutea las llamadas API sin exponer el puerto 8090.
@@ -33,47 +33,47 @@ const pb = new PocketBase('https://capimercado.com');
 
 ### 3.1 Colección `stores`
 
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `name` | Text | ✅ | Nombre comercial |
-| `slug` | Text | ✅ | URL amigable (único) |
-| `status` | Select | ✅ | Valores: `pending`, `approved`, `rejected` |
-| `category` | Text | ✅ | Debe coincidir con Bento Grid: `Smartphones`, `Laptops`, `Audio`, `Accesorios` |
-| `location` | Text | ❌ | Ciudad/sede (ej: `Valencia, Sambil`) |
-| `description` | Text | ❌ | Bio de la tienda |
-| `whatsapp` | Text | ✅ | Formato `584141234567` (sin espacios) |
-| `instagram` | Text | ❌ | Usuario sin `@` |
-| `facebook` | Text | ❌ | URL o usuario |
-| `tiktok` | Text | ❌ | Usuario |
-| `logo` | File | ❌ | Imagen cuadrada recomendada |
-| `banner` | File | ❌ | Proporción 3:1 recomendada |
-| `primaryColor` | Text | ❌ | HEX (ej: `#10b981`) |
-| `owner` | Relation → users | ✅ | ID del usuario dueño |
+| Campo          | Tipo             | Obligatorio | Descripción                                                                    |
+| -------------- | ---------------- | ----------- | ------------------------------------------------------------------------------ |
+| `name`         | Text             | ✅          | Nombre comercial                                                               |
+| `slug`         | Text             | ✅          | URL amigable (único)                                                           |
+| `status`       | Select           | ✅          | Valores: `pending`, `approved`, `rejected`                                     |
+| `category`     | Text             | ✅          | Debe coincidir con Bento Grid: `Smartphones`, `Laptops`, `Audio`, `Accesorios` |
+| `location`     | Text             | ❌          | Ciudad/sede (ej: `Valencia, Sambil`)                                           |
+| `description`  | Text             | ❌          | Bio de la tienda                                                               |
+| `whatsapp`     | Text             | ✅          | Formato `584141234567` (sin espacios)                                          |
+| `instagram`    | Text             | ❌          | Usuario sin `@`                                                                |
+| `facebook`     | Text             | ❌          | URL o usuario                                                                  |
+| `tiktok`       | Text             | ❌          | Usuario                                                                        |
+| `logo`         | File             | ❌          | Imagen cuadrada recomendada                                                    |
+| `banner`       | File             | ❌          | Proporción 3:1 recomendada                                                     |
+| `primaryColor` | Text             | ❌          | HEX (ej: `#10b981`)                                                            |
+| `owner`        | Relation → users | ✅          | ID del usuario dueño                                                           |
 
 > ⚠️ **CRÍTICO:** El filtrado del Bento Grid compara `store.category` exacto. Si en PocketBase tienes `smartphones` (minúscula), cambia el array `CATEGORY_BENTO` en el código **o** normaliza el dato en la DB.
 
 ### 3.2 Colección `products`
 
-| Campo | Tipo | Obligatorio | Descripción |
-|---|---|---|---|
-| `name` | Text | ✅ | Nombre del producto |
-| `price` | Number | ✅ | Precio en USDT |
-| `brand` | Text | ❌ | Marca (Apple, Samsung…) |
-| `condition` | Select | ✅ | Valores: `new`, `open_box`, `used` |
-| `stock` | Select | ✅ | Valores: `available`, `out_of_stock` |
-| `description` | Text | ❌ | Descripción larga |
-| `usage_details` | Text | ❌ | Detalles si es usado |
-| `images` | File (múltiple) | ❌ | Hasta N imágenes. Max recomendado: 5MB c/u |
-| `store` | Relation → stores | ✅ | FK a la tienda |
+| Campo           | Tipo              | Obligatorio | Descripción                                |
+| --------------- | ----------------- | ----------- | ------------------------------------------ |
+| `name`          | Text              | ✅          | Nombre del producto                        |
+| `price`         | Number            | ✅          | Precio en USDT                             |
+| `brand`         | Text              | ❌          | Marca (Apple, Samsung…)                    |
+| `condition`     | Select            | ✅          | Valores: `new`, `open_box`, `used`         |
+| `stock`         | Select            | ✅          | Valores: `available`, `out_of_stock`       |
+| `description`   | Text              | ❌          | Descripción larga                          |
+| `usage_details` | Text              | ❌          | Detalles si es usado                       |
+| `images`        | File (múltiple)   | ❌          | Hasta N imágenes. Max recomendado: 5MB c/u |
+| `store`         | Relation → stores | ✅          | FK a la tienda                             |
 
 > ⚠️ **CRÍTICO:** En PocketBase, la colección `products` debe tener activado **"Expand relations"** con `store` para que `expand: 'store'` funcione en el fetch.
 
 ### 3.3 Colección `users` (Sistema integrado de PocketBase)
 
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `name` | Text | Nombre completo |
-| `email` | Email | Login |
+| Campo      | Tipo     | Descripción            |
+| ---------- | -------- | ---------------------- |
+| `name`     | Text     | Nombre completo        |
+| `email`    | Email    | Login                  |
 | `password` | Password | Cifrada por PocketBase |
 
 ---
@@ -83,6 +83,7 @@ const pb = new PocketBase('https://capimercado.com');
 Configura estas reglas en el panel admin de PocketBase:
 
 ### `stores`
+
 ```
 List/Search: status = "approved"    ← Solo se muestran las aprobadas
 View:        status = "approved"
@@ -92,6 +93,7 @@ Delete:      @request.auth.id = owner
 ```
 
 ### `products`
+
 ```
 List/Search: store.status = "approved"   ← Solo productos de tiendas aprobadas
 View:        store.status = "approved"
@@ -177,7 +179,9 @@ VITE_PB_URL=https://capimercado.com
 Y en `App.jsx` línea 18, cambia a:
 
 ```js
-const pb = new PocketBase(import.meta.env.VITE_PB_URL || 'https://capimercado.com');
+const pb = new PocketBase(
+  import.meta.env.VITE_PB_URL || "https://capimercado.com",
+);
 ```
 
 > El `.env` **no se sube al servidor**, solo se usa en build time. El valor queda embebido en el bundle JS.
@@ -223,14 +227,14 @@ tailwind.config.js — luxury-green, shadow-premium, font family
 
 ## 9. Rutas del Sistema
 
-| Hash URL | Vista |
-|---|---|
-| `#/` | Marketplace principal |
-| `#/auth` | Login / Registro |
-| `#/mi-cuenta` | Panel del comprador |
-| `#/panel` | Panel del vendedor |
-| `#/store/<id>` | Tienda individual (URL compartible) |
-| `#/admin-control-valencia-2026` | SuperAdmin (secreto) |
+| Hash URL                        | Vista                               |
+| ------------------------------- | ----------------------------------- |
+| `#/`                            | Marketplace principal               |
+| `#/auth`                        | Login / Registro                    |
+| `#/account`                     | Panel del comprador                 |
+| `#/panel`                       | Panel del vendedor                  |
+| `#/store/<id>`                  | Tienda individual (URL compartible) |
+| `#/admin-control-valencia-2026` | SuperAdmin (secreto)                |
 
 ---
 
