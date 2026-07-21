@@ -5,95 +5,38 @@ import {
   Search,
   ArrowLeft,
   X,
-  Plus,
   Filter,
   MapPin,
-  MessageCircle,
   ChevronRight,
   User,
   Menu,
 } from "lucide-react";
 import pb from "@/lib/pocketbase";
-import { getImageUrl, SPRING, SPRING_SLOW, getCategoryIcon } from "@/lib/utils";
+import { getImageUrl, SPRING, getCategoryIcon } from "@/lib/utils";
 import useAuthStore from "@/lib/useAuthStore";
 import SafeImage from "@/components/common/SafeImage";
 import HeroCinematic from "@/components/HeroCinematic";
 import CategoryBentoGrid from "@/components/features/marketplace/CategoryBentoGrid";
-import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
-import ProductCard from "@/components/features/marketplace/ProductCard";
 import ProductGrid from "@/components/features/marketplace/ProductGrid";
-import PriceDisplay from "@/components/common/PriceDisplay";
 import useDebounce from "@/hooks/useDebounce";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-// Services
-import { marketplaceService } from "@/lib/services/MarketplaceService";
-import { useMarketplaceFilters } from "@/hooks/useMarketplaceFilters"; // Ajusta la ruta según tu estructura
 
-const IconInstagram = ({ size = 24, className = "" }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-  </svg>
-);
-
-const IconFacebook = ({ size = 24, className = "" }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-  </svg>
-);
+// Hooks
+import { useMarketplaceFilters } from "@/hooks/marketplace/useMarketplaceFilters";
+import { useMarketplaceData } from "@/hooks/marketplace/useMarketplaceData";
+import { IconInstagram, IconFacebook } from "@/assets/icons/socialIcons";
 
 export default function MarketplaceView({
   exclusiveStoreId = null,
   exclusiveStoreSlug = null,
 }) {
-  const [stores, setStores] = useState([]);
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
-  const [products, setProducts] = useState([]);
-  const [activeStore, setActiveStore] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-
-  // UI States
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  // Buscador y Filtros
-  const [searchType, setSearchType] = useState("products");
-  const [searchTerm, setSearchTerm] = useState("");
-
+  // 1. Estados de Filtros desestructurados
   const { filterState, dispatch } = useMarketplaceFilters();
-
-  // La desestructuración se queda exactamente igual para no romper el JSX:
   const {
     activeCategory,
     minPrice,
@@ -104,53 +47,38 @@ export default function MarketplaceView({
     currentPage,
   } = filterState;
 
-  const [totalPages, setTotalPages] = useState(1);
+  // 2. UI States
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  const catalogRef = useRef(null);
-
+  // 3. Buscador
+  const [searchType, setSearchType] = useState("products");
+  const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(
     searchTerm,
     300,
   );
 
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // 4. Custom Hook de Carga de Datos (Consolida productos, tiendas, categorías y loaders)
+  const {
+    stores,
+    products,
+    categories,
+    activeStore,
+    setActiveStore,
+    isLoading,
+    isInitialLoading,
+    totalPages,
+  } = useMarketplaceData({
+    exclusiveStoreId,
+    exclusiveStoreSlug,
+    filterState,
+    debouncedSearchTerm,
+  });
 
-  // Carga inicial de categorías y tiendas
-  useEffect(() => {
-    const init = async () => {
-      try {
-        // 1. Usamos el servicio estructurado
-        // hace galta eliminar el rejuntamiento entre categorias y tiendas.
-        const { categories: cats, stores: strs } =
-          await marketplaceService.getInitialData();
-        setCategories(cats);
-        setStores(strs);
-
-        // 2. Para buscar la tienda exclusiva, puedes dejar el buscador de pb aquí temporalmente
-        // o añadir un método como marketplaceService.getStoreBySlug() más adelante.
-        if (exclusiveStoreSlug) {
-          const st = await pb
-            .collection("stores")
-            .getFirstListItem(`slug="${exclusiveStoreSlug}"`);
-          setActiveStore(st);
-          setSearchType("products");
-        } else if (exclusiveStoreId) {
-          const st = await pb.collection("stores").getOne(exclusiveStoreId);
-          setActiveStore(st);
-          setSearchType("products");
-        }
-      } catch (err) {
-        console.error("Init error:", err);
-      } finally {
-        setIsInitialLoading(false);
-      }
-    };
-    init();
-  }, [exclusiveStoreId, exclusiveStoreSlug]);
+  const catalogRef = useRef(null);
 
   // Auto-scroll al buscar
   useEffect(() => {
@@ -162,56 +90,19 @@ export default function MarketplaceView({
     }
   }, [debouncedSearchTerm]);
 
+  // Detector de Scroll para la Navbar
   useEffect(() => {
-    const loadProducts = async () => {
-      setIsLoading(true); //
-      try {
-        const result = await marketplaceService.getProducts({
-          page: currentPage, //
-          perPage: 20,
-          searchTerm: debouncedSearchTerm, //[cite: 1]
-          activeCategory, //[cite: 1]
-          minPrice, //[cite: 1]
-          maxPrice, //[cite: 1]
-          filterCond, //[cite: 1]
-          filterLoc, //[cite: 1]
-          sortOrder, //[cite: 1]
-          exclusiveStoreId, //[cite: 1]
-          activeStoreId: activeStore ? activeStore.id : null, //[cite: 1]
-        });
+    const handleScroll = () => setIsScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-        setProducts(result.items); //[cite: 1]
-        setTotalPages(result.totalPages); //[cite: 1]
-      } catch (error) {
-        console.error("Error cargando productos:", error); //[cite: 1]
-      } finally {
-        setIsLoading(false); //[cite: 1]
-      }
-    };
-
-    loadProducts(); //[cite: 1]
-
-    // Cambiamos 'filterState' por sus valores primitivos reales:
-  }, [
-    currentPage,
-    debouncedSearchTerm,
-    activeCategory,
-    minPrice,
-    maxPrice,
-    filterCond,
-    filterLoc,
-    sortOrder,
-    activeStore,
-    exclusiveStoreId,
-  ]);
-
-  // Listas Dinámicas — Solo mostramos los Rubros (Categorías Raíz) en la barra superior
+  // Listas Dinámicas — Categorías Raíz
   const availableCategories = useMemo(() => {
     if (!categories || categories.length === 0) return ["Todos"];
     const roots = categories.filter((c) => !c.parent_id).map((c) => c.name);
     const list = ["Todos", ...roots];
 
-    // Si hay una categoría activa que es subcategoría (ej: desde Bento Grid), la incluimos para que se vea seleccionada
     if (activeCategory !== "Todos" && !list.includes(activeCategory)) {
       list.push(activeCategory);
     }
@@ -226,7 +117,6 @@ export default function MarketplaceView({
   const filteredStores = useMemo(
     () =>
       stores.filter((store) => {
-        // Normalize store categories to always be an array of IDs
         const storeCatIds = Array.isArray(store.category)
           ? store.category
           : store.category
@@ -290,7 +180,11 @@ export default function MarketplaceView({
     <div className="min-h-screen bg-white dark:bg-[#050505] text-slate-900 dark:text-white font-sans selection:bg-slate-200 flex flex-col">
       {/* --- NAVBAR --- */}
       <nav
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 will-change-transform ${isScrolled ? "bg-[#050505]/85 backdrop-blur-xl border-b border-white/8 shadow-lg shadow-black/20" : "bg-transparent border-b border-transparent"}`}
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 will-change-transform ${
+          isScrolled
+            ? "bg-[#050505]/85 backdrop-blur-xl border-b border-white/8 shadow-lg shadow-black/20"
+            : "bg-transparent border-b border-transparent"
+        }`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-12 sm:h-16">
@@ -316,7 +210,9 @@ export default function MarketplaceView({
                 </motion.button>
               )}
               <div
-                className={`shrink-0 flex items-center gap-1.5 sm:gap-2 group ${!exclusiveStoreId ? "cursor-pointer" : ""}`}
+                className={`shrink-0 flex items-center gap-1.5 sm:gap-2 group ${
+                  !exclusiveStoreId ? "cursor-pointer" : ""
+                }`}
                 onClick={() => {
                   setActiveStore(null);
                   setSearchType("products");
@@ -345,7 +241,9 @@ export default function MarketplaceView({
                 <Search className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder={`Buscar ${searchType === "products" ? "iPhone, Sony..." : "tiendas..."}`}
+                  placeholder={`Buscar ${
+                    searchType === "products" ? "iPhone, Sony..." : "tiendas..."
+                  }`}
                   className="w-full bg-white/10 border border-white/10 rounded-full py-2.5 pl-12 pr-4 text-sm focus:bg-white/15 focus:border-white/20 transition-all outline-none text-white placeholder:text-white/40 shadow-inner"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -381,7 +279,11 @@ export default function MarketplaceView({
                       setSearchTerm("");
                       setDebouncedSearchTerm("");
                     }}
-                    className={`text-sm font-semibold transition-colors ${searchType === "stores" && !activeStore ? "text-white" : "text-white/60 hover:text-white"}`}
+                    className={`text-sm font-semibold transition-colors ${
+                      searchType === "stores" && !activeStore
+                        ? "text-white"
+                        : "text-white/60 hover:text-white"
+                    }`}
                   >
                     Directorio
                   </button>
@@ -395,7 +297,11 @@ export default function MarketplaceView({
                       setSearchTerm("");
                       setDebouncedSearchTerm("");
                     }}
-                    className={`text-sm font-semibold transition-colors ${searchType === "products" || activeStore ? "text-white" : "text-white/60 hover:text-white"}`}
+                    className={`text-sm font-semibold transition-colors ${
+                      searchType === "products" || activeStore
+                        ? "text-white"
+                        : "text-white/60 hover:text-white"
+                    }`}
                   >
                     Mercado
                   </button>
@@ -403,7 +309,7 @@ export default function MarketplaceView({
               )}
               {isAuthenticated ? (
                 <button
-                  onClick={() => navigate("/mi-cuenta")}
+                  onClick={() => navigate("/account")}
                   className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm"
                 >
                   <User size={16} /> Mi Cuenta
@@ -418,7 +324,7 @@ export default function MarketplaceView({
               )}
             </div>
 
-            {/* Mobile — right side: Ingresar + Hamburguesa */}
+            {/* Mobile — right side */}
             <div className="md:hidden flex items-center gap-2">
               {!isAuthenticated ? (
                 <button
@@ -433,7 +339,7 @@ export default function MarketplaceView({
               ) : (
                 <button
                   onClick={() => {
-                    navigate("/mi-cuenta");
+                    navigate("/account");
                     setIsMenuOpen(false);
                   }}
                   className="text-xs font-bold text-white bg-white/10 border border-white/20 px-3 py-1.5 rounded-full flex items-center gap-1.5"
@@ -486,7 +392,11 @@ export default function MarketplaceView({
                     setDebouncedSearchTerm("");
                     setIsMenuOpen(false);
                   }}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${searchType === "stores" ? "bg-white text-slate-900 shadow-sm" : "text-white/70"}`}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    searchType === "stores"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-white/70"
+                  }`}
                 >
                   Tiendas
                 </button>
@@ -626,7 +536,11 @@ export default function MarketplaceView({
                   style={{
                     backgroundColor: activeStore.primaryColor || "#0f172a",
                     backgroundImage: activeStore.banner
-                      ? `url(${getImageUrl(activeStore, activeStore.banner, "1200x400")})`
+                      ? `url(${getImageUrl(
+                          activeStore,
+                          activeStore.banner,
+                          "1200x400",
+                        )})`
                       : "none",
                     backgroundSize: "cover",
                     backgroundPosition: "center",
@@ -662,7 +576,10 @@ export default function MarketplaceView({
                       {activeStore.name}
                       {activeStore.instagram && (
                         <a
-                          href={`https://instagram.com/${activeStore.instagram.replace("@", "")}`}
+                          href={`https://instagram.com/${activeStore.instagram.replace(
+                            "@",
+                            "",
+                          )}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-linear-to-tr from-[#fd5949] to-[#d6249f] hover:scale-110 transition-transform shadow-lg"
@@ -736,7 +653,6 @@ export default function MarketplaceView({
                     )}
 
                     <div className="flex justify-center md:justify-start gap-4 mt-6">
-                      {/* Instagram link movido al header */}
                       {activeStore.facebook && (
                         <a
                           href={
@@ -765,7 +681,7 @@ export default function MarketplaceView({
               )}
             </section>
 
-            {/* --- BENTO CATEGORY GRID (solo cuando no hay tienda activa y estamos en productos) --- */}
+            {/* --- BENTO CATEGORY GRID --- */}
             {!activeStore && searchType === "products" && (
               <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-16 sm:mt-24 mb-16 sm:mb-20">
                 <CategoryBentoGrid
@@ -853,7 +769,11 @@ export default function MarketplaceView({
 
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium transition-colors px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg ${showFilters ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`}
+                      className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium transition-colors px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg ${
+                        showFilters
+                          ? "bg-slate-100 text-slate-900"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      }`}
                     >
                       <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Filtros
                     </button>
@@ -974,33 +894,10 @@ export default function MarketplaceView({
                     <button
                       onClick={() => {
                         dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "activeCategory", value: "Todos" },
+                          type: "RESET_FILTERS",
                         });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "minPrice", value: "" },
-                        });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "maxPrice", value: "" },
-                        });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "filterCond", value: "all" },
-                        });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "filterLoc", value: "all" },
-                        });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "searchTerm", value: "" },
-                        });
-                        dispatch({
-                          type: "SET_FILTER",
-                          payload: { key: "debouncedSearchTerm", value: "" },
-                        });
+                        setSearchTerm("");
+                        setDebouncedSearchTerm("");
                       }}
                       className="text-xs font-bold text-slate-500 hover:text-red-600 underline ml-1 transition-colors"
                     >
@@ -1126,7 +1023,6 @@ export default function MarketplaceView({
               {/* RENDERING STORES */}
               {searchType === "stores" && !activeStore && (
                 <div className="space-y-6">
-                  {/* Category filter notice */}
                   {activeCategory !== "Todos" && (
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <span>Mostrando tiendas de:</span>
@@ -1250,7 +1146,7 @@ export default function MarketplaceView({
                   totalPages={totalPages}
                   setPage={(page) =>
                     dispatch({ type: "SET_PAGE", payload: page })
-                  } // Cambiado aquí
+                  }
                 />
               )}
             </section>
