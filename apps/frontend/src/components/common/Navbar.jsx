@@ -99,7 +99,7 @@ export default function Navbar({
               </>
             )}
             {isAuthenticated ? (
-              <button onClick={() => navigate('/mi-cuenta')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
+              <button onClick={() => navigate('/account')} className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-green transition-colors bg-white/10 px-4 py-2 rounded-lg border border-white/10 shadow-sm">
                 <User size={16} /> Mi Cuenta
               </button>
             ) : (
@@ -116,7 +116,7 @@ export default function Navbar({
                 Ingresar
               </button>
             ) : (
-              <button onClick={() => { navigate('/mi-cuenta'); setIsMenuOpen(false); }} className="text-xs font-bold text-white bg-white/10 border border-white/20 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <button onClick={() => { navigate('/account'); setIsMenuOpen(false); }} className="text-xs font-bold text-white bg-white/10 border border-white/20 px-3 py-1.5 rounded-full flex items-center gap-1.5">
                 <User size={13} /> Cuenta
               </button>
             )}
