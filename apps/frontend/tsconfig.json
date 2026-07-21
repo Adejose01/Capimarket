@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* --- SOLUCIÓN: Quitamos baseUrl y apuntamos directo --- */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
