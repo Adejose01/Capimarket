@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import {
   Package,
   LogOut,
@@ -10,13 +9,14 @@ import {
   Settings,
   LayoutGrid,
 } from "lucide-react";
-import pb from "@/lib/pocketbase";
 import { getImageUrl } from "@/lib/utils";
 import useAuthStore from "@/lib/useAuthStore";
 import SafeImage from "@/components/common/SafeImage";
 import BrandSettings from "@/components/features/seller/BrandSettings";
 import InventoryList from "@/components/features/seller/InventoryList";
 import ProductFormModal from "@/components/features/seller/ProductFormModal";
+import { StoreService } from "@/lib/services/pb/store.service";
+import { ProductsService } from "@/lib/services/pb/products.service";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 
@@ -26,19 +26,28 @@ export default function SellerPortalView() {
   const { user, isAuthenticated, logout } = useAuthStore();
 
   const [selectedStore, setSelectedStore] = useState(null);
-  const [storeIdInput, setStoreIdInput] = useState("");
   const [inventory, setInventory] = useState([]);
 
   const [view, setView] = useState("inventory");
   const [editingProduct, setEditingProduct] = useState(null);
   const [isLoadingStore, setIsLoadingStore] = useState(true);
 
-  const loadInventory = async (id) => {
-    const records = await pb.collection("products").getFullList({
-      filter: `store = "${id}"`,
-      requestKey: null, // 👈 Aprovechamos de meter esto para evitar el auto-cancel
-    });
-    setInventory(records);
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  const loadInventory = (id) => {
+    if (!id) return;
+
+    ProductsService.getByStore(id)
+      .then((records) => {
+        setInventory(records);
+      })
+      .catch((err) => {
+        console.error("Error al cargar inventario:", err);
+        setInventory([]);
+      });
   };
 
   useEffect(() => {
@@ -46,14 +55,9 @@ export default function SellerPortalView() {
       navigate("/auth");
       return;
     }
-    pb.collection("stores")
-      .getFullList({ filter: `owner = "${user?.id}"` })
+    StoreService.getByOwner(user.id)
       .then((stores) => {
         setMyStores(stores);
-        if (stores.length === 1) {
-          setSelectedStore(stores[0]);
-          loadInventory(stores[0].id);
-        }
         setIsLoadingStore(false);
       })
       .catch((err) => {
@@ -61,31 +65,9 @@ export default function SellerPortalView() {
         setMyStores([]);
         setIsLoadingStore(false);
       });
-  }, []);
+  }, [isAuthenticated, navigate, user?.id]);
 
   if (!isAuthenticated) return null;
-
-  const handleClaimStore = async (e) => {
-    e.preventDefault();
-    if (!storeIdInput) return;
-    try {
-      const updatedStore = await pb.collection("stores").update(storeIdInput, {
-        owner: user?.id,
-      });
-      setMyStores([...myStores, updatedStore]);
-      setSelectedStore(updatedStore);
-      loadInventory(updatedStore.id);
-      toast.success("¡Tienda vinculada con éxito!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Store ID inválido o la tienda ya tiene dueño.");
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
 
   if (isLoadingStore) {
     return (
@@ -95,7 +77,7 @@ export default function SellerPortalView() {
     );
   }
 
-  if (myStores.length > 1 && !selectedStore) {
+  if (!selectedStore) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-12 font-sans">
         <div className="max-w-4xl mx-auto">
@@ -138,36 +120,6 @@ export default function SellerPortalView() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedStore) {
-    return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-premium">
-            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
-              Validación de Tienda
-            </h2>
-            <form onSubmit={handleClaimStore} className="space-y-4">
-              <input
-                type="text"
-                required
-                placeholder="ID Secreto de Tienda"
-                className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm font-medium outline-none shadow-sm"
-                value={storeIdInput}
-                onChange={(e) => setStoreIdInput(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="w-full bg-slate-900 text-white py-4 rounded-full text-sm font-bold shadow-premium mt-4"
-              >
-                Vincular Tienda
-              </button>
-            </form>
           </div>
         </div>
       </div>

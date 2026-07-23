@@ -2,7 +2,7 @@ import React from "react";
 import { Package, Edit2, Trash2 } from "lucide-react";
 import SafeImage from "@/components/common/SafeImage";
 import { getImageUrl } from "@/lib/utils";
-import pb from "@/lib/pocketbase";
+import { ProductsService } from "@/lib/services/pb/products.service";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 
@@ -15,8 +15,12 @@ export default function InventoryList({
 }) {
   const handleDelete = async (id) => {
     if (window.confirm("¿Eliminar producto definitivamente?")) {
-      await pb.collection("products").delete(id);
-      reloadInventory(selectedStoreId);
+      try {
+        await ProductsService.delete(id);
+        reloadInventory(selectedStoreId);
+      } catch (err) {
+        console.error("Error al eliminar el producto:", err);
+      }
     }
   };
 

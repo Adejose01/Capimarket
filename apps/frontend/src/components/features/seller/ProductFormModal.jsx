@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Plus, Edit2, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import useCategories from "@/hooks/dashboard/useCategories";
-import { ProductsService } from "@/lib/services/products.service";
+import { ProductsService } from "@/lib/services/pb/products.service";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 

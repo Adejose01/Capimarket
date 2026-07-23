@@ -12,8 +12,8 @@ import {
   X,
   Settings,
 } from "lucide-react";
-import pb from "@/lib/pocketbase";
 import useAuthStore from "@/lib/useAuthStore";
+import { StoreService } from "@/lib/services/pb/store.service";
 // import useCategories from "@/hooks/dashboard/useCategories";
 
 export default function BuyerPortalView() {
@@ -27,8 +27,8 @@ export default function BuyerPortalView() {
       navigate("/auth");
       return;
     }
-    pb.collection("stores")
-      .getFullList({ filter: `owner = "${user.id}"` })
+
+    StoreService.getByOwner(user.id)
       .then(setMyStores)
       .catch(() => setMyStores([]));
   }, [isAuthenticated, navigate, user]);
@@ -38,26 +38,28 @@ export default function BuyerPortalView() {
   const handleApplyToSell = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const name = fd.get("name");
-    if (name) {
-      const slug = name
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      fd.append("slug", slug);
-    }
-    fd.append("status", "pending");
-    fd.append("owner", user.id);
+
+    // Mapeo seguro contra la interfaz StoreInput de StoreService
+    const storePayload = {
+      ownerId: user.id,
+      name: String(fd.get("name") || ""),
+      instagram: String(fd.get("instagram") || ""),
+      whatsapp: String(fd.get("whatsapp") || ""),
+      correo: String(fd.get("correo") || user.email || ""),
+      category: String(fd.get("category") || ""),
+      description: String(fd.get("description") || ""),
+      location: String(fd.get("location") || ""),
+      // slug, status ('pending') y campos por defecto los resuelve StoreService.create
+    };
+
     try {
-      await pb.collection("stores").create(fd);
+      await StoreService.create(storePayload);
       toast.success(
         "¡Solicitud enviada con éxito! El equipo de CapiMercado se contactará contigo pronto.",
       );
       setShowApplyModal(false);
     } catch (err) {
-      console.error(err);
+      console.error("Error al enviar solicitud de tienda:", err);
       toast.error("Hubo un error enviando tu solicitud.");
     }
   };
