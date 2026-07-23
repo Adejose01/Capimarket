@@ -14,14 +14,13 @@ import {
 } from "lucide-react";
 import pb from "@/lib/pocketbase";
 import useAuthStore from "@/lib/useAuthStore";
-import useCategories from "@/hooks/useCategories";
+// import useCategories from "@/hooks/dashboard/useCategories";
 
 export default function BuyerPortalView() {
   const [myStores, setMyStores] = useState([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { categories } = useCategories();
 
   useEffect(() => {
     if (!isAuthenticated) {
