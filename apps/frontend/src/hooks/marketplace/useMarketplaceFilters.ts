@@ -49,9 +49,22 @@ function filtersReducer(state: typeof INITIAL_STATE, action: FilterAction) {
 export function useMarketplaceFilters() {
   const [filterState, dispatch] = useReducer(filtersReducer, INITIAL_STATE);
 
-  // Retornamos el estado y el dispatch para que la UI los use
+  const setFilter = (key: string, value: any) =>
+    dispatch({ type: "SET_FILTER", payload: { key, value } });
+
+  const setPage = (page: number) =>
+    dispatch({ type: "SET_PAGE", payload: page });
+
+  const resetFilters = () => dispatch({ type: "RESET_FILTERS" });
+
+  const resetAll = () => dispatch({ type: "RESET_ALL" });
+
   return {
     filterState,
     dispatch,
+    setFilter,
+    setPage,
+    resetFilters,
+    resetAll,
   };
 }

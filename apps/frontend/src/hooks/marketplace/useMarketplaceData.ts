@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import pb from "@/lib/pocketbase";
-import { marketplaceService } from "@/lib/services/MarketplaceService";
+import { marketplaceService } from "@/lib/services/marketplace.service";
 
 interface UseMarketplaceDataProps {
   exclusiveStoreId?: string | null;
