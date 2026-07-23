@@ -161,8 +161,8 @@ export const ProductsService = {
       : `store = "${storeId}"`;
 
     return await pb.collection("products").getFullList({
-      filter,
-      sort: "-created",
+      filter: filter,
+      // sort: "-created",
       expand: "category",
     });
   },
