@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { marketplaceService } from "@/lib/services/marketplace.service";
+import { MarketplaceService } from "@/lib/services/marketplace.service";
 import { StoreService } from "@/lib/services/pb/store.service";
 
 interface UseMarketplaceDataProps {
@@ -47,7 +47,7 @@ export function useMarketplaceData({
       try {
         // 1. Cargar datos iniciales
         const { categories: cats, stores: strs } =
-          await marketplaceService.getInitialData();
+          await MarketplaceService.getInitialData();
         setCategories(cats);
         setStores(strs);
 
@@ -74,7 +74,7 @@ export function useMarketplaceData({
     const loadProducts = async () => {
       setIsLoading(true);
       try {
-        const result = await marketplaceService.getProducts({
+        const result = await MarketplaceService.getProducts({
           page: currentPage,
           perPage: 20,
           searchTerm: debouncedSearchTerm,

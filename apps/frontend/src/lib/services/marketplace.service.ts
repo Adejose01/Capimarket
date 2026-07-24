@@ -1,7 +1,8 @@
-// Logica de las llamadas a db para la Marketplaceview
 import pb from "@/lib/pocketbase";
+import { StoreService } from "@/lib/services/pb/store.service";
+import { ProductsService } from "@/lib/services/pb/products.service"; // Asumiendo la ubicación de tu ProductsService
 
-// 1. Definimos las interfaces (lo que en Dart serían tus Clases / Models)
+// 1. Interfaces TypeScript
 export interface Category {
   id: string;
   name: string;
@@ -27,8 +28,8 @@ export interface Product {
   price: number;
   condition: string;
   store: string;
+  category?: string;
   listed: boolean;
-  // PocketBase te permite expandir relaciones (lo equivalente a un JOIN)
   expand?: {
     store?: Store;
     category?: Category;
@@ -42,7 +43,6 @@ export interface PaginatedResult<T> {
   totalItems: number;
 }
 
-// 2. Parámetros de filtrado agrupados (Equivalente a un Data Class o Record en Dart)
 export interface ProductFilterOptions {
   page: number;
   perPage: number;
@@ -57,72 +57,98 @@ export interface ProductFilterOptions {
   activeStoreId?: string | null;
 }
 
-// 3. La Clase Servicio (Patrón Singleton o instancia estática para inyección)
-class MarketplaceService {
-  // Equivalente a traer los catálogos iniciales
-  async getInitialData(): Promise<{ categories: Category[]; stores: Store[] }> {
-    const [categories, stores] = await Promise.all([
-      pb.collection("categories").getFullList<Category>(),
-      pb.collection("stores").getFullList<Store>(),
-    ]);
+// 2. Definición del Servicio usando Objeto / Funciones estáticas (consistente con StoreService)
+export const MarketplaceService = {
+  /**
+   * Obtiene los catálogos iniciales para poblar los filtros (Categorías y Tiendas)
+   */
+  getInitialData(): Promise<{ categories: Category[]; stores: any[] }> {
+    const categoriesPromise = pb
+      .collection("categories")
+      .getFullList<Category>();
+    const storesPromise = StoreService.getList({
+      status: "approved",
+      perPage: 500,
+    });
 
-    return { categories, stores };
-  }
+    return Promise.all([categoriesPromise, storesPromise])
+      .then(([categories, storesResult]) => {
+        return {
+          categories,
+          stores: storesResult.items,
+        };
+      })
+      .catch((err) => {
+        console.error("Error al obtener datos iniciales del marketplace:", err);
+        return { categories: [], stores: [] };
+      });
+  },
 
-  // El método robusto de filtrado que limpia el useEffect de tu UI
-  async getProducts(
+  /**
+   * Genera el string de filtros y consulta los productos paginados
+   */
+  getProducts(
     options: ProductFilterOptions,
   ): Promise<PaginatedResult<Product>> {
-    let filterParams = 'store.status = "approved" && listed = true';
+    const filters: string[] = ['store.status = "approved"', "listed = true"];
 
     if (options.exclusiveStoreId) {
-      filterParams += ` && store = "${options.exclusiveStoreId}"`;
+      filters.push(`store = "${options.exclusiveStoreId}"`);
     } else if (options.activeStoreId) {
-      filterParams += ` && store = "${options.activeStoreId}"`;
+      filters.push(`store = "${options.activeStoreId}"`);
     }
 
     if (options.searchTerm) {
-      filterParams += ` && (name ~ "${options.searchTerm}" || brand ~ "${options.searchTerm}")`;
+      filters.push(
+        `(name ~ "${options.searchTerm}" || brand ~ "${options.searchTerm}")`,
+      );
     }
 
-    // Nota: Pasamos la lista de categorías para poder evaluar el parent_id si es necesario,
-    // o puedes manejar la lógica del mapping de la categoría aquí dentro de forma limpia.
     if (options.activeCategory && options.activeCategory !== "Todos") {
-      // Idealmente, podemos resolver el ID de la categoría aquí o recibir directamente el ID
-      filterParams += ` && category.name = "${options.activeCategory}"`;
+      filters.push(`category.name = "${options.activeCategory}"`);
     }
 
     if (options.minPrice) {
-      filterParams += ` && price >= ${Number(options.minPrice) * 100}`;
-    }
-    if (options.maxPrice) {
-      filterParams += ` && price <= ${Number(options.maxPrice) * 100}`;
-    }
-    if (options.filterCond && options.filterCond !== "all") {
-      filterParams += ` && condition = "${options.filterCond}"`;
-    }
-    if (options.filterLoc && options.filterLoc !== "all") {
-      filterParams += ` && store.location = "${options.filterLoc}"`;
+      filters.push(`price >= ${Number(options.minPrice) * 100}`);
     }
 
-    // Ejecutamos la petición paginada de PocketBase apuntando a nuestro Modelo genérico
-    const result = await pb
+    if (options.maxPrice) {
+      filters.push(`price <= ${Number(options.maxPrice) * 100}`);
+    }
+
+    if (options.filterCond && options.filterCond !== "all") {
+      filters.push(`condition = "${options.filterCond}"`);
+    }
+
+    if (options.filterLoc && options.filterLoc !== "all") {
+      filters.push(`store.location = "${options.filterLoc}"`);
+    }
+
+    const filterString = filters.join(" && ");
+
+    // Petición a PocketBase usando promesas
+    return pb
       .collection("products")
       .getList<Product>(options.page, options.perPage, {
         expand: "store,category",
-        filter: filterParams,
-        requestKey: null, // Evita cancelaciones automáticas duplicadas si se dispara rápido
+        filter: filterString,
+        requestKey: null,
         ...(options.sortOrder ? { sort: options.sortOrder } : {}),
+      })
+      .then((result) => ({
+        items: result.items,
+        totalPages: result.totalPages,
+        page: result.page,
+        totalItems: result.totalItems,
+      }))
+      .catch((err) => {
+        console.error("Error al obtener productos filtrados:", err);
+        return {
+          items: [],
+          totalPages: 0,
+          page: options.page,
+          totalItems: 0,
+        };
       });
-
-    return {
-      items: result.items,
-      totalPages: result.totalPages,
-      page: result.page,
-      totalItems: result.totalItems,
-    };
-  }
-}
-
-// Exportamos una única instancia de la clase (Singleton conceptual)
-export const marketplaceService = new MarketplaceService();
+  },
+};

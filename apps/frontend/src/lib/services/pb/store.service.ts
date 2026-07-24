@@ -218,7 +218,7 @@ export const StoreService = {
 
     return await pb.collection("stores").getList(page, perPage, {
       filter: filterString,
-      sort: "-created",
+      // sort: "-created",
       expand: "owner",
     });
   },
