@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Location } from "react-router-dom";
 import AuthView from "@/pages/auth/AuthView";
 // dashboard
 import SuperAdminView from "@/pages/dashboard/admin/SuperAdminView";
@@ -17,12 +17,20 @@ import MarketplaceView from "@/pages/marketplace/MarketplaceView";
 import ProductDetailView from "@/pages/marketplace/ProductDetailView";
 // store
 import StoreCatalogView from "@/pages/store/StoreCatalogView";
+// 404
+import NotFoundView from "@/pages/info/NotFoundView";
 // Components
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 
-export default function App() {
+// Tipamos el state que le pasas al router cuando abres un producto como modal
+interface LocationState {
+  background?: Location;
+}
+
+export default function App(): React.JSX.Element {
   const location = useLocation();
-  const background = location.state && location.state.background;
+  const state = location.state as LocationState | null;
+  const background = state?.background;
 
   return (
     <ErrorBoundary>
@@ -32,14 +40,13 @@ export default function App() {
         <Route path="/account" element={<BuyerPortalView />} />
         <Route path="/stores/:slug" element={<StoreCatalogView />} />
         <Route path="/store/:slug" element={<MarketplaceView />} />
-        <Route path="*" element={<MarketplaceView />} />
-        {/* Renderiza la ruta normal si no hay background (por ej. visita directa al enlace) */}
         <Route path="/producto/:id" element={<ProductDetailView />} />
         <Route path="/panel" element={<SellerPortalView />} />
         <Route
           path="/admin-control-valencia-2026"
           element={<SuperAdminView />}
         />
+
         {/* Footer Links */}
         <Route path="/privacy" element={<PrivacyView />} />
         <Route path="/terms" element={<TermsView />} />
@@ -47,8 +54,12 @@ export default function App() {
         <Route path="/support" element={<SupportView />} />
         <Route path="/faq" element={<FaqView />} />
         <Route path="/contact" element={<ContactView />} />
+
+        {/* Catch-all 404: Debe ir estrictamente al final */}
+        <Route path="*" element={<NotFoundView />} />
       </Routes>
 
+      {/* Renderiza el modal sobre la vista principal si existe background */}
       {background && (
         <Routes>
           <Route path="/producto/:id" element={<ProductDetailView />} />
