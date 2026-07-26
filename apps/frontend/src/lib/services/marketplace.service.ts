@@ -1,5 +1,6 @@
 import pb from "@/lib/pocketbase";
 import { StoreService } from "@/lib/services/pb/store.service";
+import type { ProductRecord } from "@/lib/types/pocketbase";
 import { ProductsService } from "@/lib/services/pb/products.service"; // Asumiendo la ubicación de tu ProductsService
 
 // 1. Interfaces TypeScript
@@ -89,7 +90,7 @@ export const MarketplaceService = {
    */
   getProducts(
     options: ProductFilterOptions,
-  ): Promise<PaginatedResult<Product>> {
+  ): Promise<PaginatedResult<ProductRecord>> {
     const filters: string[] = ['store.status = "approved"', "listed = true"];
 
     if (options.exclusiveStoreId) {
@@ -129,7 +130,7 @@ export const MarketplaceService = {
     // Petición a PocketBase usando promesas
     return pb
       .collection("products")
-      .getList<Product>(options.page, options.perPage, {
+      .getList<ProductRecord>(options.page, options.perPage, {
         expand: "store,category",
         filter: filterString,
         requestKey: null,
