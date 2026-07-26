@@ -1,30 +1,111 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Palette, MessageCircle, Smartphone, Tag } from "lucide-react";
-import pb from "@/lib/pocketbase";
+import { Palette, MessageCircle, Tag } from "lucide-react";
+import { CategoriesService } from "@/lib/services/pb/categories.service";
+import type { CategoryRecord, StoreRecord } from "@/lib/types/pocketbase";
+import { StoreService } from "@/lib/services/pb/store.service";
 import { getImageUrl } from "@/lib/utils";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/constants/countryCodes";
 import SafeImage from "@/components/common/SafeImage";
-// eslint-disable-next-line no-unused-vars
-import { motion } from "framer-motion";
 
-export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
-  const [isUpdatingBrand, setIsUpdatingBrand] = useState(false);
-  const [previewBanner, setPreviewBanner] = useState(null);
-  const [previewLogo, setPreviewLogo] = useState(null);
-  const [allCategories, setAllCategories] = useState([]);
-  const [selectedCategories, setSelectedCategories] = useState(
-    Array.isArray(selectedStore.category) ? selectedStore.category : [],
+interface BrandSettingsProps {
+  selectedStore: StoreRecord;
+  onUpdateSuccess: (updatedStore: StoreRecord) => void;
+}
+
+const parsePhone = (rawPhone?: string) => {
+  if (!rawPhone) return { code: DEFAULT_COUNTRY_CODE, digits: "" };
+
+  const matchedCountry = COUNTRY_CODES.find((item) =>
+    rawPhone.startsWith(item.code)
   );
 
+  if (matchedCountry) {
+    return {
+      code: matchedCountry.code,
+      digits: rawPhone.replace(matchedCountry.code, "").trim(),
+    };
+  }
+
+  return {
+    code: DEFAULT_COUNTRY_CODE,
+    digits: rawPhone.replace(/^\+\d{1,3}/, "").trim(),
+  };
+};
+
+export default function BrandSettings({
+  selectedStore,
+  onUpdateSuccess,
+}: BrandSettingsProps) {
+  const [isUpdatingBrand, setIsUpdatingBrand] = useState<boolean>(false);
+  const [previewBanner, setPreviewBanner] = useState<string | null>(null);
+  const [previewLogo, setPreviewLogo] = useState<string | null>(null);
+  const [allCategories, setAllCategories] = useState<CategoryRecord[]>([]);
+
+  // 1. ESTADOS CONTROLADOS PARA TODOS LOS CAMPOS DE LA TIENDA
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [primaryColor, setPrimaryColor] = useState<string>("#0f172a");
+  const [location, setLocation] = useState<string>("");
+  const [mapsUrl, setMapsUrl] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [countryCode, setCountryCode] = useState<string>(DEFAULT_COUNTRY_CODE);
+  const [phoneDigits, setPhoneDigits] = useState<string>("");
+  const [instagram, setInstagram] = useState<string>("");
+
+  // 🔄 SINCRONIZACIÓN AUTOMÁTICA CADA VEZ QUE CAMBIE `selectedStore`
   useEffect(() => {
-    pb.collection("categories")
-      .getFullList()
-      .then((cats) => {
-        setAllCategories(cats.filter((c) => !c.parent_id)); // Only root categories
-      })
-      .catch(() => {});
+    if (!selectedStore) return;
+
+    // A) Extraer IDs de categorías de forma ultra-robusta
+    let categoryIds: string[] = [];
+
+    if (Array.isArray(selectedStore.category)) {
+      categoryIds = selectedStore.category.map((cat) =>
+        typeof cat === "string" ? cat : (cat as CategoryRecord).id
+      );
+    } else if (typeof selectedStore.category === "string" && selectedStore.category.trim() !== "") {
+      categoryIds = [selectedStore.category];
+    } else if (selectedStore.expand?.category) {
+      const expCat = selectedStore.expand.category;
+      if (Array.isArray(expCat)) {
+        categoryIds = expCat.map((c) => c.id);
+      } else if (expCat && typeof expCat === "object" && "id" in expCat) {
+        categoryIds = [(expCat as CategoryRecord).id];
+      }
+    }
+
+    setSelectedCategories(categoryIds);
+
+    // B) Sincronizar resto de campos
+    setPrimaryColor(selectedStore.primaryColor || "#0f172a");
+    setLocation(selectedStore.location || "");
+    setMapsUrl(selectedStore.maps_url || "");
+    setDescription(selectedStore.description || "");
+
+    const parsedPhone = parsePhone(selectedStore.whatsapp);
+    setCountryCode(parsedPhone.code);
+    setPhoneDigits(parsedPhone.digits);
+
+    setInstagram(
+      selectedStore.instagram ? selectedStore.instagram.replace(/^@/, "") : ""
+    );
+
+    // Resetear previsualizaciones al cambiar de tienda
+    setPreviewBanner(null);
+    setPreviewLogo(null);
+  }, [selectedStore]);
+
+  // Cargar catálogo global de categorías
+  useEffect(() => {
+    CategoriesService.getAllCategories()
+      .then((cats) => setAllCategories(cats))
+      .catch((err: unknown) => {
+        console.error("Error al cargar categorías:", err);
+        toast.error("No se pudieron cargar las categorías del sistema.");
+      });
   }, []);
 
+  // Limpieza de URLs de previsualización
   useEffect(() => {
     return () => {
       if (previewBanner) URL.revokeObjectURL(previewBanner);
@@ -32,25 +113,26 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
     };
   }, [previewBanner, previewLogo]);
 
-  const toggleCategory = (catId) => {
+  const toggleCategory = (catId: string) => {
     setSelectedCategories((prev) =>
       prev.includes(catId)
         ? prev.filter((id) => id !== catId)
-        : [...prev, catId],
+        : [...prev, catId]
     );
   };
 
-  const handleUpdateBrand = async (e) => {
+  const handleUpdateBrand = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (selectedCategories.length === 0) {
       toast.error("Debes seleccionar al menos una categoría para tu tienda.");
       return;
     }
+
     setIsUpdatingBrand(true);
-    const formElement = e.target;
+    const formElement = e.currentTarget;
     const fd = new FormData(formElement);
 
-    // CRITICAL: Remove empty file inputs to prevent PocketBase from clearing existing files
+    // Limpieza de imágenes sin seleccionar
     const bannerFile = fd.get("banner");
     if (bannerFile && bannerFile instanceof File && bannerFile.size === 0) {
       fd.delete("banner");
@@ -60,24 +142,30 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
       fd.delete("logo");
     }
 
-    // Remove any existing category entries and add selected ones
+    // Inserción limpia de categorías
     fd.delete("category");
     selectedCategories.forEach((catId) => fd.append("category", catId));
 
-    try {
-      const updatedStore = await pb
-        .collection("stores")
-        .update(selectedStore.id, fd);
-      toast.success("¡Tienda actualizada!");
-      onUpdateSuccess(updatedStore);
-      setPreviewBanner(null);
-      setPreviewLogo(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al actualizar la marca.");
-    } finally {
-      setIsUpdatingBrand(false);
-    }
+    // Forzar valores limpios de estados controlados
+    fd.set("instagram", instagram);
+    fd.set("whatsapp", phoneDigits ? `${countryCode}${phoneDigits}` : "");
+    fd.set("primaryColor", primaryColor);
+    fd.set("location", location);
+    fd.set("maps_url", mapsUrl);
+    fd.set("description", description);
+
+    StoreService.update(selectedStore.id, fd)
+      .then((updatedStore: StoreRecord) => {
+        toast.success("¡Tienda actualizada con éxito!");
+        onUpdateSuccess(updatedStore);
+      })
+      .catch((err: unknown) => {
+        console.error("Error al actualizar la tienda:", err);
+        toast.error("Hubo un error al actualizar la marca.");
+      })
+      .finally(() => {
+        setIsUpdatingBrand(false);
+      });
   };
 
   return (
@@ -90,6 +178,7 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
       </h3>
 
       <form onSubmit={handleUpdateBrand} className="space-y-8">
+        {/* Banner Principal */}
         <div>
           <label className="text-xs font-bold text-slate-500 mb-3 block">
             Banner Principal de la Tienda (Proporción 16:9)
@@ -107,7 +196,7 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
                   src={getImageUrl(
                     selectedStore,
                     selectedStore.banner,
-                    "1200x400",
+                    "1200x400"
                   )}
                   alt="Banner"
                   className="w-full h-full object-cover"
@@ -128,6 +217,7 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
           />
         </div>
 
+        {/* Logo y Color Principal */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="text-xs font-bold text-slate-500 mb-2 block">
@@ -146,7 +236,7 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
                     src={getImageUrl(
                       selectedStore,
                       selectedStore.logo,
-                      "100x100",
+                      "100x100"
                     )}
                     alt="Logo"
                     className="w-16 h-16 rounded-2xl border border-slate-200 bg-slate-50 shrink-0 object-cover shadow-sm"
@@ -169,18 +259,22 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
             <input
               name="primaryColor"
               type="color"
-              defaultValue={selectedStore.primaryColor || "#0f172a"}
+              value={primaryColor}
+              onChange={(e) => setPrimaryColor(e.target.value)}
               className="w-12 h-12 rounded-full border-0 cursor-pointer bg-transparent overflow-hidden"
             />
             <div className="flex-1">
               <label className="text-xs font-bold text-slate-500 block">
                 Color de Marca
               </label>
-              <span className="text-sm font-mono text-slate-400">HEX Code</span>
+              <span className="text-sm font-mono text-slate-400">
+                {primaryColor}
+              </span>
             </div>
           </div>
         </div>
 
+        {/* Ubicación y Descripción */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 mb-2 block">
@@ -189,7 +283,8 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
             <input
               name="location"
               type="text"
-              defaultValue={selectedStore.location}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
               placeholder="Ej: Valencia, Sambil"
               className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
             />
@@ -201,7 +296,8 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
             <input
               name="maps_url"
               type="url"
-              defaultValue={selectedStore.maps_url}
+              value={mapsUrl}
+              onChange={(e) => setMapsUrl(e.target.value)}
               placeholder="https://maps.app.goo.gl/..."
               className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
             />
@@ -212,15 +308,16 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
             </label>
             <textarea
               name="description"
-              defaultValue={selectedStore.description}
-              rows="3"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
               placeholder="Somos distribuidores oficiales..."
               className="w-full bg-white border border-slate-200 rounded-3xl px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 resize-none shadow-sm"
             ></textarea>
           </div>
         </div>
 
-        {/* ===== MANDATORY CATEGORY SELECTION ===== */}
+        {/* Selección de Categorías */}
         <div className="pt-8 border-t border-slate-100">
           <label className="text-xs font-bold text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
             <Tag size={16} className="text-emerald-600" /> Categorías de tu
@@ -238,7 +335,7 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
                   key={cat.id}
                   type="button"
                   onClick={() => toggleCategory(cat.id)}
-                  className={`p-3 rounded-2xl border-2 text-sm font-bold transition-all text-left ${
+                  className={`p-3 rounded-2xl border-2 text-sm font-bold transition-all text-left cursor-pointer ${
                     isSelected
                       ? "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
@@ -261,62 +358,60 @@ export default function BrandSettings({ selectedStore, onUpdateSuccess }) {
           )}
         </div>
 
+        {/* Redes Sociales */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-slate-100">
+          {/* WhatsApp */}
           <div>
             <label className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-2">
               <MessageCircle size={16} className="text-emerald-600" /> WhatsApp
               Manager
             </label>
-            <input
-              name="whatsapp"
-              type="text"
-              defaultValue={selectedStore.whatsapp}
-              placeholder="Ej: 58414..."
-              className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
-            />
+            <div className="flex rounded-full border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-600/10 transition-all shadow-sm">
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="bg-slate-50 border-r border-slate-200 px-3 py-4 text-xs font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                {COUNTRY_CODES.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={phoneDigits}
+                onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, ""))}
+                placeholder="4141234567"
+                className="w-full px-4 py-4 text-sm outline-none text-slate-900 placeholder:text-slate-400"
+              />
+            </div>
           </div>
+
+          {/* Instagram */}
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-500 mb-2 block">
               Instagram
             </label>
-            <input
-              name="instagram"
-              type="text"
-              defaultValue={selectedStore.instagram}
-              placeholder="@tutienda"
-              className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-2">
-              <Smartphone size={16} className="text-slate-800" /> TikTok
-            </label>
-            <input
-              name="tiktok"
-              type="text"
-              defaultValue={selectedStore.tiktok}
-              placeholder="@tutienda"
-              className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-2">
-              Facebook
-            </label>
-            <input
-              name="facebook"
-              type="text"
-              defaultValue={selectedStore.facebook}
-              placeholder="URL o Usuario"
-              className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 shadow-sm"
-            />
+            <div className="flex rounded-full border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-600/10 transition-all shadow-sm">
+              <span className="inline-flex items-center px-4 text-slate-500 font-bold bg-slate-50 border-r border-slate-200 text-sm select-none">
+                @
+              </span>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value.replace(/^@/, "").trim())}
+                placeholder="tutienda"
+                className="w-full px-4 py-4 text-sm outline-none text-slate-900 placeholder:text-slate-400"
+              />
+            </div>
           </div>
         </div>
 
         <button
           type="submit"
           disabled={isUpdatingBrand}
-          className="w-full bg-slate-900 text-white py-5 rounded-full text-sm font-bold hover:bg-slate-800 transition-all mt-8 shadow-premium disabled:opacity-50 hover:-translate-y-0.5"
+          className="w-full bg-slate-900 text-white py-5 rounded-full text-sm font-bold hover:bg-slate-800 transition-all mt-8 shadow-premium disabled:opacity-50 hover:-translate-y-0.5 cursor-pointer"
         >
           {isUpdatingBrand
             ? "Guardando Cambios..."
