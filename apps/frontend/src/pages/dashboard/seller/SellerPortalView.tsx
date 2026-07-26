@@ -152,8 +152,8 @@ const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
                   <h4 className="font-extrabold text-xl tracking-tight text-slate-900">
                     {store.name}
                   </h4>
-                  <p className="text-xs font-bold text-slate-400">
-                    {store.category || "Sin Categoría"}
+                  <p className="text-xs font-bold text-slate-400 bg-clip-padding">
+                    {store.description || "Sin Categoría"}
                   </p>
                 </div>
               </div>
