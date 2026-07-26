@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { MarketplaceService } from "@/lib/services/marketplace.service";
 import { StoreService } from "@/lib/services/pb/store.service";
+import { CategoriesService } from "@/lib/services/pb/categories.service";
+import type {
+  CategoryRecord,
+  StoreRecord,
+  ProductRecord,
+} from "@/lib/types/pocketbase";
 
 interface UseMarketplaceDataProps {
   exclusiveStoreId?: string | null;
@@ -23,10 +29,10 @@ export function useMarketplaceData({
   filterState,
   debouncedSearchTerm,
 }: UseMarketplaceDataProps) {
-  const [stores, setStores] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [activeStore, setActiveStore] = useState<any | null>(null);
+  const [stores, setStores] = useState<StoreRecord[]>([]);
+  const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [activeStore, setActiveStore] = useState<StoreRecord | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -41,22 +47,25 @@ export function useMarketplaceData({
     sortOrder,
   } = filterState;
 
-  // 1. Carga inicial de categorías, tiendas y tienda exclusiva
+  // 1. Carga inicial: Ahora usamos CategoriesService.getActiveCategories()
   useEffect(() => {
     const init = async () => {
       try {
-        // 1. Cargar datos iniciales
-        const { categories: cats, stores: strs } =
-          await MarketplaceService.getInitialData();
-        setCategories(cats);
+        // Cargar tiendas desde MarketplaceService y solo las categorías activas desde CategoriesService
+        const [activeCats, { stores: strs }] = await Promise.all([
+          CategoriesService.getActiveCategories(),
+          MarketplaceService.getInitialData(),
+        ]);
+
+        setCategories(activeCats);
         setStores(strs);
 
-        // 2. Resolver la tienda activa usando el servicio delegado
+        // Resolver la tienda activa si aplica
         if (exclusiveStoreSlug) {
-          const st = await StoreService.getBySlug(exclusiveStoreSlug);
+          const st = await StoreService.getStoreBySlug(exclusiveStoreSlug);
           setActiveStore(st);
         } else if (exclusiveStoreId) {
-          const st = await StoreService.getById(exclusiveStoreId);
+          const st = await StoreService.getStoreById(exclusiveStoreId);
           setActiveStore(st);
         }
       } catch (err) {
