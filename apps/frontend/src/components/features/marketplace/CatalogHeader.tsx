@@ -1,6 +1,15 @@
 import React from "react";
 import { Filter } from "lucide-react";
 
+interface CatalogHeaderProps {
+  searchType: "products" | "stores" | string;
+  activeStore?: unknown;
+  sortOrder: string;
+  showFilters: boolean;
+  setShowFilters: (show: boolean) => void;
+  dispatch: (action: { type: string; payload: { key: string; value: unknown } }) => void;
+}
+
 export default function CatalogHeader({
   searchType,
   activeStore,
@@ -8,9 +17,9 @@ export default function CatalogHeader({
   showFilters,
   setShowFilters,
   dispatch,
-}) {
+}: CatalogHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 sm:mb-4">
+    <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 sm:mb-8 pb-1 transition-all">
       <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
         {searchType === "stores" && !activeStore
           ? "Directorio de Tiendas"
@@ -28,7 +37,7 @@ export default function CatalogHeader({
                 payload: { key: "sortOrder", value: e.target.value },
               })
             }
-            className="text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer text-slate-700 shadow-sm"
+            className="text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer text-slate-700 shadow-xs hover:border-slate-300 transition-colors"
           >
             <option value="">⏱ Más recientes</option>
             <option value="price">💰 Precio: menor a mayor</option>
@@ -39,9 +48,9 @@ export default function CatalogHeader({
           {/* Toggle Filter Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium transition-colors px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg ${
+            className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium transition-colors px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg cursor-pointer ${
               showFilters
-                ? "bg-slate-100 text-slate-900"
+                ? "bg-slate-100 text-slate-900 font-bold"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
