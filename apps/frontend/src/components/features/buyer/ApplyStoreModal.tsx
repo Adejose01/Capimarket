@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { StoreService } from "@/lib/services/pb/store.service";
 import { validateStoreInput } from "@/lib/validators/store.validator";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE } from "@/lib/constants/countryCodes";
 
 interface ApplyStoreModalProps {
   userId: string;
@@ -11,26 +12,16 @@ interface ApplyStoreModalProps {
   onSuccess: () => void;
 }
 
-// Lista de prefijos comunes
-const COUNTRY_CODES = [
-  { code: "+58", label: "🇻🇪 +58" },
-  { code: "+57", label: "🇨🇴 +57" },
-  { code: "+1", label: "🇺🇸 +1" },
-  { code: "+52", label: "🇲🇽 +52" },
-  { code: "+54", label: "🇦🇷 +54" },
-  { code: "+56", label: "🇨🇱 +56" },
-  { code: "+34", label: "🇪🇸 +34" },
-];
-
 export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
   userId,
   userEmail,
   onClose,
   onSuccess,
 }) => {
-  const [countryCode, setCountryCode] = useState("+58");
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Permite únicamente ingresar números en el campo
@@ -39,7 +30,7 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
   };
 
   const handleInstagramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Si el usuario escribe o pega con '@', se lo removemos en vivo
+    // Remueve el '@' al escribir o pegar
     const cleanValue = e.target.value.replace(/^@/, "");
     setInstagram(cleanValue);
   };
@@ -60,6 +51,8 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
       toast.error(firstError);
       return;
     }
+
+    setIsSubmitting(true);
 
     // 2. Armar Payload con datos limpios
     const storePayload = {
@@ -85,6 +78,9 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
       .catch((err) => {
         console.error("Error al enviar solicitud de tienda:", err);
         toast.error("Hubo un error enviando tu solicitud.");
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
   };
 
@@ -94,7 +90,7 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
         <button
           onClick={onClose}
           type="button"
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 cursor-pointer"
+          className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 cursor-pointer transition-colors"
         >
           <X size={20} />
         </button>
@@ -141,7 +137,7 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
             </div>
           </div>
 
-          {/* WhatsApp con Selector de Prefijo y Formato Numérico */}
+          {/* WhatsApp con Selector de Prefijo Centralizado */}
           <div>
             <label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1 block">
               WhatsApp
@@ -187,9 +183,10 @@ export const ApplyStoreModal: React.FC<ApplyStoreModalProps> = ({
 
           <button
             type="submit"
-            className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl mt-4 hover:bg-slate-800 transition-colors shadow-lg cursor-pointer"
+            disabled={isSubmitting}
+            className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl mt-4 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-lg cursor-pointer"
           >
-            Enviar Solicitud
+            {isSubmitting ? "Enviando..." : "Enviar Solicitud"}
           </button>
         </form>
       </div>
