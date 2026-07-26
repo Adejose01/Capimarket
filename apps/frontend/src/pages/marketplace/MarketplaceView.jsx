@@ -92,17 +92,19 @@ export default function MarketplaceView({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Listas Dinámicas — Categorías Raíz
-  const availableCategories = useMemo(() => {
-    if (!categories || categories.length === 0) return ["Todos"];
-    const roots = categories.filter((c) => !c.parent_id).map((c) => c.name);
-    const list = ["Todos", ...roots];
+  // [ CATEGORIAS DISPONIBLES ]
 
-    if (activeCategory !== "Todos" && !list.includes(activeCategory)) {
-      list.push(activeCategory);
-    }
-    return list;
-  }, [categories, activeCategory]);
+  // Listas Dinámicas — Categorías Raíz
+  // const availableCategories = useMemo(() => {
+  //   if (!categories || categories.length === 0) return ["Todos"];
+  //   const roots = categories.filter((c) => !c.parent_id).map((c) => c.name);
+  //   const list = ["Todos", ...roots];
+
+  //   if (activeCategory !== "Todos" && !list.includes(activeCategory)) {
+  //     list.push(activeCategory);
+  //   }
+  //   return list;
+  // }, [categories, activeCategory]);
 
   const availableLocations = [
     "all",
@@ -212,8 +214,10 @@ export default function MarketplaceView({
               </section>
             )}
 
+            {/* PARA REACTIVAR ESTA SECCION HACE FALTA DESCOMENTAR CATEGORIAS DISPONIBLES*/}
+
             {/* --- FILTER CHIPS: Sticky Horizontal Bar --- */}
-            <section className="sticky top-0 z-40 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shadow-sm mb-8 sm:mb-12 transition-all duration-300">
+            {/* <section className="sticky top-0 z-40 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shadow-sm mb-8 sm:mb-12 transition-all duration-300">
               <CategoryBar
                 availableCategories={availableCategories}
                 activeCategory={activeCategory}
@@ -225,7 +229,7 @@ export default function MarketplaceView({
                   });
                 }}
               />
-            </section>
+            </section> */}
 
             {/* --- DYNAMIC GRID --- */}
             <section
