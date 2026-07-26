@@ -43,7 +43,7 @@ export const BuyerAccountActions: React.FC<BuyerAccountActionsProps> = ({
               Ingresa al panel de control de tus negocios actuales.
             </p>
           </button>
-          <button
+          {/* <button
             onClick={onOpenApplyModal}
             className="p-6 border border-slate-100 rounded-2xl hover:border-slate-300 transition-colors cursor-pointer group flex flex-col items-center justify-center text-center gap-3 bg-white"
           >
@@ -52,7 +52,8 @@ export const BuyerAccountActions: React.FC<BuyerAccountActionsProps> = ({
             <p className="text-xs text-slate-500">
               Solicita abrir otra sucursal u otra marca.
             </p>
-          </button>
+          </button> */}
+          {/* Ahora la creacion de tiendas queda en la administracion */}
         </div>
       ) : (
         <div
