@@ -1,25 +1,25 @@
 import pb from "@/lib/pocketbase";
-
-// 1. Interfaces TypeScript según el schema Auth de PocketBase
+import type { ListResult, RecordAuthResponse } from "pocketbase";
+import type { UserRecord } from "@/lib/types/pocketbase";
 
 export interface CreateUserInput {
-  email: string; // Nonempty
-  password: string; // Nonempty
-  passwordConfirm: string; // Required for creation
+  email: string;
+  password: string;
+  passwordConfirm: string;
   name?: string;
   emailVisibility?: boolean;
-  avatar?: File; // File Single
+  avatar?: File;
 }
 
 export interface UpdateUserInput {
   name?: string;
   email?: string;
   emailVisibility?: boolean;
-  oldPassword?: string; // Requerido si se intenta cambiar la contraseña
+  oldPassword?: string;
   password?: string;
   passwordConfirm?: string;
-  avatar?: File; // Archivo de imagen nuevo
-  deleteAvatar?: boolean; // Para borrar el avatar actual
+  avatar?: File;
+  deleteAvatar?: boolean;
 }
 
 export interface UsersListOptions {
@@ -33,66 +33,68 @@ export const UsersService = {
   // --- HELPERS INTERNOS ---
 
   /**
-   * Construye un FormData en caso de que se envíe un archivo de avatar,
-   * o devuelve un objeto JSON estándar si no hay archivos.
+   * Construye un FormData en caso de que se envíe un archivo de avatar o eliminación del mismo,
+   * o devuelve un objeto JSON estándar si no hay archivos involucrados.
    */
   preparePayload(
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     avatarFile?: File,
     deleteAvatar?: boolean,
-  ): FormData | Record<string, any> {
+  ): FormData | Record<string, unknown> {
     if (avatarFile || deleteAvatar) {
       const fd = new FormData();
 
-      Object.keys(data).forEach((key) => {
-        if (data[key] !== undefined && data[key] !== null) {
-          fd.append(key, String(data[key]));
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          fd.append(key, String(value));
         }
       });
 
       if (avatarFile) {
         fd.append("avatar", avatarFile);
-      }
-
-      if (deleteAvatar) {
-        // En PocketBase asignas null o cadena vacía al campo para borrar un archivo single
+      } else if (deleteAvatar) {
+        // En PocketBase asignar enviando string vacío al campo para borrar un archivo
         fd.append("avatar", "");
       }
 
       return fd;
     }
 
-    // Si no hay imágenes, devolvemos el objeto JSON directo
     return data;
   },
 
   // --- AUTENTICACIÓN & SESIÓN ---
 
   /**
-   * Inicia sesión con Email / Usuario y Password
+   * Inicia sesión con Email / Username y Password
    */
-  async login(identity: string, password: string) {
-    return await pb.collection("users").authWithPassword(identity, password);
+  async login(
+    identity: string,
+    password: string,
+  ): Promise<RecordAuthResponse<UserRecord>> {
+    return await pb
+      .collection("users")
+      .authWithPassword<UserRecord>(identity, password);
   },
 
   /**
    * Cierra la sesión activa
    */
-  logout() {
+  logout(): void {
     pb.authStore.clear();
   },
 
   /**
    * Devuelve el usuario actualmente autenticado en el AuthStore
    */
-  getCurrentUser() {
-    return pb.authStore.record;
+  getCurrentUser(): UserRecord | null {
+    return (pb.authStore.record as UserRecord | null) ?? null;
   },
 
   /**
    * Comprueba si hay una sesión válida
    */
-  isAuthenticated() {
+  isAuthenticated(): boolean {
     return pb.authStore.isValid;
   },
 
@@ -101,7 +103,10 @@ export const UsersService = {
   /**
    * Crea un nuevo usuario en la plataforma
    */
-  async create(data: CreateUserInput, autoSendVerification = true) {
+  async create(
+    data: CreateUserInput,
+    autoSendVerification = true,
+  ): Promise<UserRecord> {
     const rawData = {
       email: data.email.trim(),
       password: data.password,
@@ -111,7 +116,7 @@ export const UsersService = {
     };
 
     const payload = this.preparePayload(rawData, data.avatar);
-    const record = await pb.collection("users").create(payload);
+    const record = await pb.collection("users").create<UserRecord>(payload);
 
     if (autoSendVerification) {
       this.requestVerification(data.email).catch((err) => {
@@ -125,8 +130,8 @@ export const UsersService = {
   /**
    * Actualiza el perfil de un usuario existente
    */
-  async update(id: string, data: UpdateUserInput) {
-    const rawData: Record<string, any> = {};
+  async update(id: string, data: UpdateUserInput): Promise<UserRecord> {
+    const rawData: Record<string, unknown> = {};
 
     if (data.name !== undefined) rawData.name = data.name.trim();
     if (data.email !== undefined) rawData.email = data.email.trim();
@@ -143,27 +148,27 @@ export const UsersService = {
       data.avatar,
       data.deleteAvatar,
     );
-    return await pb.collection("users").update(id, payload);
+    return await pb.collection("users").update<UserRecord>(id, payload);
   },
 
   /**
    * Solicita el envío del correo de verificación
    */
-  async requestVerification(email: string) {
+  async requestVerification(email: string): Promise<boolean> {
     return await pb.collection("users").requestVerification(email);
   },
 
   /**
    * Solicita restablecer contraseña por email
    */
-  async requestPasswordReset(email: string) {
+  async requestPasswordReset(email: string): Promise<boolean> {
     return await pb.collection("users").requestPasswordReset(email);
   },
 
   /**
    * Elimina una cuenta de usuario
    */
-  async delete(id: string) {
+  async delete(id: string): Promise<boolean> {
     return await pb.collection("users").delete(id);
   },
 
@@ -172,14 +177,16 @@ export const UsersService = {
   /**
    * Obtiene la información de un usuario por su ID
    */
-  async getById(id: string) {
-    return await pb.collection("users").getOne(id);
+  async getUserById(id: string): Promise<UserRecord> {
+    return await pb.collection("users").getOne<UserRecord>(id);
   },
 
   /**
    * Obtiene una lista paginada de usuarios
    */
-  async getList(options: UsersListOptions = {}) {
+  async getList(
+    options: UsersListOptions = {},
+  ): Promise<ListResult<UserRecord>> {
     const { page = 1, perPage = 20, searchTerm, sort = "-created" } = options;
 
     let filter = "";
@@ -187,7 +194,7 @@ export const UsersService = {
       filter = `name ~ "${searchTerm}" || email ~ "${searchTerm}"`;
     }
 
-    return await pb.collection("users").getList(page, perPage, {
+    return await pb.collection("users").getList<UserRecord>(page, perPage, {
       filter,
       sort,
     });

@@ -1,56 +1,26 @@
 import pb from "@/lib/pocketbase";
-
-// 1. Interfaces TypeScript basadas en el esquema de la colección 'stores'
-
-export type StoreStatus = "pending" | "approved" | "suspended";
-export type StoreMembershipType = "free" | "premium" | "enterprise";
-
-export interface StoreInput {
-  ownerId: string; // Relation -> users (Nonempty)
-  name: string; // Text (Nonempty)
-  slug?: string; // Text (Opcional: se autogenera si no se proporciona)
-  instagram: string; // Text (Nonempty)
-  whatsapp: string; // Text (Nonempty)
-  correo: string; // Email (Nonempty)
-  category?: string; // Text
-  description?: string; // Text
-  location?: string; // Text
-  status?: StoreStatus; // Select
-  membershipType?: StoreMembershipType; // Select
-  membershipStatus?: boolean; // Bool
-  verified?: boolean; // Bool
-  primaryColor?: string; // Text (Hex code, ej: '#000000')
-  mapsUrl?: string; // URL
-  logoFile?: File; // File Single
-  bannerFile?: File; // File Single
-  deleteLogo?: boolean;
-  deleteBanner?: boolean;
-}
-
-export interface GetStoresOptions {
-  page?: number;
-  perPage?: number;
-  ownerId?: string;
-  status?: StoreStatus;
-  searchTerm?: string;
-  verifiedOnly?: boolean;
-}
+import type { ListResult } from "pocketbase";
+import type {
+  StoreRecord,
+  StoreInput,
+  GetStoresOptions,
+} from "@/lib/types/pocketbase";
 
 export const StoreService = {
   // --- HELPERS INTERNOS ---
 
   /**
-   * Normaliza y genera un slug amigable a partir de una cadena
+   * Normaliza y genera un slug amigable
    */
   generateSlug(name: string): string {
     return name
       .toLowerCase()
       .trim()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // Elimina acentos
-      .replace(/[^a-z0-9 -]/g, "") // Elimina caracteres especiales
-      .replace(/\s+/g, "-") // Reemplaza espacios por guiones
-      .replace(/-+/g, "-"); // Elimina guiones dobles
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 -]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
   },
 
   /**
@@ -60,63 +30,68 @@ export const StoreService = {
     baseName: string,
     currentStoreId?: string,
   ): Promise<string> {
-    let slug = this.generateSlug(baseName);
+    const slug = this.generateSlug(baseName);
 
     try {
       const existing = await pb
         .collection("stores")
-        .getFirstListItem(`slug = "${slug}"`);
+        .getFirstListItem<StoreRecord>(`slug = "${slug}"`);
 
       if (existing && existing.id !== currentStoreId) {
         const randomSuffix = Math.random().toString(36).substring(2, 6);
-        slug = `${slug}-${randomSuffix}`;
+        return `${slug}-${randomSuffix}`;
       }
+      return slug;
     } catch (err: any) {
-      // 404 indica que el slug está disponible
+      if (err?.status === 404) return slug;
+      throw err;
     }
-
-    return slug;
   },
 
   /**
-   * Prepara el FormData según la especificación de la documentación de PocketBase
+   * Prepara el FormData para envío a PocketBase
    */
   buildFormData(data: StoreInput): FormData {
     const fd = new FormData();
 
-    // Campos obligatorios (Nonempty)
-    fd.append("owner", data.ownerId);
-    fd.append("name", data.name.trim());
-    if (data.slug) {
-      fd.append("slug", data.slug.trim());
+    if (data.ownerId) fd.append("owner", data.ownerId);
+    if (data.name) fd.append("name", data.name.trim());
+    if (data.slug) fd.append("slug", data.slug.trim());
+    if (data.instagram) fd.append("instagram", data.instagram.trim());
+    if (data.whatsapp) fd.append("whatsapp", data.whatsapp.trim());
+    if (data.correo) fd.append("correo", data.correo.trim().toLowerCase());
+
+    if (data.status) fd.append("status", data.status);
+    if (data.membershipType) fd.append("membership_type", data.membershipType);
+
+    if (data.membershipStatus !== undefined) {
+      fd.append("membership_status", String(data.membershipStatus));
     }
-    fd.append("instagram", data.instagram.trim());
-    fd.append("whatsapp", data.whatsapp.trim());
-    fd.append("correo", data.correo.trim().toLowerCase());
+    if (data.verified !== undefined) {
+      fd.append("verified", String(data.verified));
+    }
 
-    // Campos Select (Enviados directamente como valor escalar o manejados por FormData)
-    fd.append("status", data.status || "pending");
-    fd.append("membership_type", data.membershipType || "free");
+    // MANEJO DE CATEGORÍAS MÚLTIPLES
+    if (data.category) {
+      if (Array.isArray(data.category)) {
+        data.category.forEach((catId) => fd.append("category", catId));
+      } else {
+        fd.append("category", data.category);
+      }
+    }
 
-    // Booleans
-    fd.append("membership_status", String(data.membershipStatus ?? true));
-    fd.append("verified", String(data.verified ?? false));
-
-    // Opcionales
-    if (data.category) fd.append("category", data.category.trim());
     if (data.description) fd.append("description", data.description.trim());
     if (data.location) fd.append("location", data.location.trim());
     if (data.primaryColor) fd.append("primaryColor", data.primaryColor.trim());
     if (data.mapsUrl) fd.append("maps_url", data.mapsUrl.trim());
 
-    // Manejo de Logo (subir o eliminar)
+    // Archivos
     if (data.logoFile) {
       fd.append("logo", data.logoFile);
     } else if (data.deleteLogo) {
       fd.append("logo", "");
     }
 
-    // Manejo de Banner (subir o eliminar)
     if (data.bannerFile) {
       fd.append("banner", data.bannerFile);
     } else if (data.deleteBanner) {
@@ -131,69 +106,111 @@ export const StoreService = {
   /**
    * Crea una nueva tienda asegurando un slug único
    */
-  async create(data: StoreInput) {
-    if (!data.slug) {
-      data.slug = await this.ensureUniqueSlug(data.name);
-    }
+  async create(data: StoreInput): Promise<StoreRecord> {
+    try {
+      const slug = data.slug
+        ? data.slug
+        : await this.ensureUniqueSlug(data.name || "tienda");
 
-    const fd = this.buildFormData(data);
-    return await pb.collection("stores").create(fd);
+      data.slug = slug;
+      const fd = this.buildFormData(data);
+
+      return await pb.collection("stores").create<StoreRecord>(fd);
+    } catch (error) {
+      console.error("Error al crear la tienda:", error);
+      throw error;
+    }
   },
 
   /**
-   * Actualiza la información o las imágenes de una tienda
+   * Actualiza la información o las imágenes de una tienda.
+   * Soporta tanto un objeto `StoreInput` como un `FormData` directo.
    */
-  async update(id: string, data: StoreInput) {
-    if (!data.slug && data.name) {
-      data.slug = await this.ensureUniqueSlug(data.name, id);
-    }
+  async update(id: string, data: StoreInput | FormData): Promise<StoreRecord> {
+    try {
+      if (data instanceof FormData) {
+        return await pb.collection("stores").update<StoreRecord>(id, data);
+      }
 
-    const fd = this.buildFormData(data);
-    return await pb.collection("stores").update(id, fd);
+      if (!data.slug && data.name) {
+        data.slug = await this.ensureUniqueSlug(data.name, id);
+      }
+
+      const fd = this.buildFormData(data);
+      return await pb.collection("stores").update<StoreRecord>(id, fd);
+    } catch (error) {
+      console.error(`Error al actualizar la tienda ${id}:`, error);
+      throw error;
+    }
   },
 
   /**
    * Elimina una tienda por su ID
    */
-  async delete(id: string) {
-    return await pb.collection("stores").delete(id);
+  async delete(id: string): Promise<boolean> {
+    try {
+      return await pb.collection("stores").delete(id);
+    } catch (error) {
+      console.error(`Error al eliminar la tienda ${id}:`, error);
+      throw error;
+    }
   },
 
   // --- LECTURA (Queries) ---
 
   /**
-   * Obtiene una tienda por su ID resolviendo relaciones con sintaxis oficial
+   * Obtiene una tienda por su ID resolviendo relaciones
    */
-  async getById(id: string) {
-    return await pb.collection("stores").getOne(id, {
-      expand: "owner",
-    });
+  async getStoreById(id: string): Promise<StoreRecord | null> {
+    try {
+      return await pb.collection("stores").getOne<StoreRecord>(id, {
+        expand: "owner,category",
+      });
+    } catch (error: any) {
+      if (error?.status === 404) return null;
+      console.error(`Error al obtener tienda por ID ${id}:`, error);
+      throw error;
+    }
   },
 
   /**
    * Obtiene una tienda directamente mediante su slug público
    */
-  async getBySlug(slug: string) {
-    return await pb.collection("stores").getFirstListItem(`slug = "${slug}"`, {
-      expand: "owner",
-    });
+  async getStoreBySlug(slug: string): Promise<StoreRecord | null> {
+    try {
+      return await pb
+        .collection("stores")
+        .getFirstListItem<StoreRecord>(`slug = "${slug}"`, {
+          expand: "owner,category",
+        });
+    } catch (error: any) {
+      if (error?.status === 404) return null;
+      console.error(`Error al obtener tienda por slug (${slug}):`, error);
+      throw error;
+    }
   },
 
   /**
    * Obtiene todas las tiendas asociadas a un usuario específico
    */
-  async getByOwner(ownerId: string, expand = false) {
-    return await pb.collection("stores").getFullList({
-      filter: `owner = "${ownerId}"`,
-      // sort: "-created",
-      expand: expand ? "owner" : "",
-    });
+  async getByOwner(ownerId: string, expand = false): Promise<StoreRecord[]> {
+    try {
+      return await pb.collection("stores").getFullList<StoreRecord>({
+        filter: `owner = "${ownerId}"`,
+        expand: expand ? "owner,category" : "",
+      });
+    } catch (error) {
+      console.error(`Error al obtener tiendas del owner ${ownerId}:`, error);
+      throw error;
+    }
   },
 
   /**
    * Obtiene lista paginada de tiendas con filtros para el catálogo
    */
-  async getList(options: GetStoresOptions = {}) {
+  async getList(
+    options: GetStoresOptions = {},
+  ): Promise<ListResult<StoreRecord>> {
     const {
       page = 1,
       perPage = 20,
@@ -209,17 +226,17 @@ export const StoreService = {
     if (ownerId) filters.push(`owner = "${ownerId}"`);
     if (verifiedOnly) filters.push("verified = true");
     if (searchTerm) {
-      filters.push(
-        `(name ~ "${searchTerm}" || description ~ "${searchTerm}" || category ~ "${searchTerm}")`,
-      );
+      filters.push(`(name ~ "${searchTerm}" || description ~ "${searchTerm}")`);
     }
 
-    const filterString = filters.join(" && ");
-
-    return await pb.collection("stores").getList(page, perPage, {
-      filter: filterString,
-      // sort: "-created",
-      expand: "owner",
-    });
+    try {
+      return await pb.collection("stores").getList<StoreRecord>(page, perPage, {
+        filter: filters.join(" && "),
+        expand: "owner,category",
+      });
+    } catch (error) {
+      console.error("Error al obtener la lista de tiendas:", error);
+      throw error;
+    }
   },
 };

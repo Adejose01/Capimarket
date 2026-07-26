@@ -1,35 +1,16 @@
 import pb from "@/lib/pocketbase";
-
-// 1. Tipado TypeScript basado en el schema exacto de PocketBase
-export interface ProductInput {
-  storeId: string; // Relation -> stores (Nonempty)
-  name: string; // Text (Nonempty)
-  description?: string; // Text/Editor
-  condition: "new" | "open_box" | "used"; // Select Single (Nonempty)
-  basePrice?: number; // Number (base_price en USDT decimales)
-  price: number; // Number (price en USDT decimales - Nonzero)
-  stock: "available" | "out_of_stock" | string; // Select Single
-  brand?: string; // Text
-  listed?: boolean; // Bool
-  category: string; // Relation -> categories (Nonempty)
-  newImages?: File[]; // File Multiple (images)
-  imagesToDelete?: string[]; // Para remover archivos existentes
-}
-
-export interface GetProductsOptions {
-  page?: number;
-  perPage?: number;
-  storeId?: string;
-  categoryId?: string;
-  searchTerm?: string;
-  onlyListed?: boolean;
-}
+import type { ListResult } from "pocketbase";
+import type {
+  ProductRecord,
+  ProductInput,
+  GetProductsOptions,
+} from "@/lib/types/pocketbase";
 
 export const ProductsService = {
   // --- MÉTODOS DE ESCRITURA (Mutations) ---
 
   /**
-   * Mapea y empaqueta el objeto DTO hacia FormData respetando los tipos de PocketBase
+   * Mapea y empaqueta el objeto DTO hacia FormData respetando el esquema exacto de PocketBase
    */
   buildFormData(data: ProductInput): FormData {
     const fd = new FormData();
@@ -46,14 +27,23 @@ export const ProductsService = {
       fd.append("price", priceInCents.toString());
     }
 
-    // Campo Opcional: base_price
+    // Campo Opcional: original_price (en la DB es original_price, no base_price)
+    const rawOriginalPrice = data.originalPrice;
     if (
-      data.basePrice !== undefined &&
-      data.basePrice !== null &&
-      data.basePrice > 0
+      rawOriginalPrice !== undefined &&
+      rawOriginalPrice !== null &&
+      rawOriginalPrice > 0
     ) {
-      const basePriceInCents = Math.round(data.basePrice * 100);
-      fd.append("base_price", basePriceInCents.toString());
+      const originalPriceInCents = Math.round(rawOriginalPrice * 100);
+      fd.append("original_price", originalPriceInCents.toString());
+    }
+
+    // Ofertas y Descuentos
+    if (data.onSale !== undefined) {
+      fd.append("on_sale", String(data.onSale));
+    }
+    if (data.saleEndsAt) {
+      fd.append("sale_ends_at", data.saleEndsAt);
     }
 
     // Otros campos opcionales / valores por defecto
@@ -66,6 +56,11 @@ export const ProductsService = {
 
     if (data.description) {
       fd.append("description", data.description.trim());
+    }
+
+    // Tags (Array -> JSON en PocketBase)
+    if (data.tags && data.tags.length > 0) {
+      fd.append("tags", JSON.stringify(data.tags));
     }
 
     // Subida de imágenes nuevas (Multiple)
@@ -88,41 +83,66 @@ export const ProductsService = {
   /**
    * Crea un producto en PocketBase
    */
-  async create(data: ProductInput) {
+  async create(data: ProductInput): Promise<ProductRecord> {
     const fd = this.buildFormData(data);
-    return await pb.collection("products").create(fd);
+    return await pb.collection("products").create<ProductRecord>(fd);
   },
 
   /**
    * Actualiza un producto existente en PocketBase
    */
-  async update(id: string, data: ProductInput) {
+  async update(id: string, data: ProductInput): Promise<ProductRecord> {
     const fd = this.buildFormData(data);
-    return await pb.collection("products").update(id, fd);
+    return await pb.collection("products").update<ProductRecord>(id, fd);
   },
 
   /**
    * Elimina un producto por ID
    */
-  async delete(id: string) {
+  async delete(id: string): Promise<boolean> {
     return await pb.collection("products").delete(id);
   },
 
   // --- MÉTODOS DE LECTURA (Queries) ---
 
   /**
-   * Obtiene un registro individual resolviendo relaciones
+   * Obtiene UN SOLO producto por su ID
    */
-  async getById(id: string, expand: string[] = ["category", "store"]) {
-    return await pb.collection("products").getOne(id, {
+  async getProductById(
+    id: string,
+    expand: string[] = ["category", "store"],
+  ): Promise<ProductRecord> {
+    return await pb.collection("products").getOne<ProductRecord>(id, {
       expand: expand.join(","),
+    });
+  },
+
+  /**
+   * Trae todos los productos asociados a una tienda por su storeId
+   */
+  async getProductsByStoreId(
+    storeId: string,
+    onlyListed = false,
+    expand: string[] = ["category", "store"],
+  ): Promise<ProductRecord[]> {
+    const filter = onlyListed
+      ? `store = "${storeId}" && listed = true`
+      : `store = "${storeId}"`;
+
+    return await pb.collection("products").getFullList<ProductRecord>({
+      filter,
+      sort: "-created",
+      expand: expand.join(","),
+      requestKey: null,
     });
   },
 
   /**
    * Obtiene lista paginada con filtros dinámicos
    */
-  async getList(options: GetProductsOptions = {}) {
+  async getList(
+    options: GetProductsOptions = {},
+  ): Promise<ListResult<ProductRecord>> {
     const {
       page = 1,
       perPage = 20,
@@ -143,27 +163,12 @@ export const ProductsService = {
       );
     }
 
-    const filterString = filters.join(" && ");
-
-    return await pb.collection("products").getList(page, perPage, {
-      filter: filterString,
-      sort: "-created",
-      expand: "category,store",
-    });
-  },
-
-  /**
-   * Trae todos los productos asociados a una tienda
-   */
-  async getByStore(storeId: string, onlyListed = false) {
-    const filter = onlyListed
-      ? `store = "${storeId}" && listed = true`
-      : `store = "${storeId}"`;
-
-    return await pb.collection("products").getFullList({
-      filter: filter,
-      // sort: "-created",
-      expand: "category",
-    });
+    return await pb
+      .collection("products")
+      .getList<ProductRecord>(page, perPage, {
+        filter: filters.join(" && "),
+        sort: "-created",
+        expand: "category,store",
+      });
   },
 };
