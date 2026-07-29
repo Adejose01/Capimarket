@@ -162,3 +162,17 @@ export interface GetStoresOptions {
   searchTerm?: string;
   verifiedOnly?: boolean;
 }
+
+// ============================================================================
+// INPUT DTOs & QUERY OPTIONS - CONTACT
+// ============================================================================
+export interface ContactTicket {
+  id: string;
+  user: string;
+  name: string;
+  reason: string;
+  message: string;
+  active: boolean;
+  created: string;
+  updated: string;
+}
