@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { getImageUrl } from "@/lib/utils";
 import useAuthStore from "@/lib/useAuthStore";
 import SafeImage from "@/components/common/SafeImage";
@@ -23,10 +24,11 @@ export default function SellerPortalView() {
   const [inventory, setInventory] = useState<ProductRecord[]>([]);
 
   const [view, setView] = useState("inventory");
-const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(
+    null,
+  );
   const [isLoadingStore, setIsLoadingStore] = useState(true);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-  
 
   // Límite según membresía (por defecto 4 si no está definido)
   const getMaxStoresLimit = (membership) => {
@@ -118,12 +120,20 @@ const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
                 {maxAllowedStores} permitidas)
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-2.5 bg-white border border-slate-200 shadow-xs rounded-full text-xs font-bold text-red-500 hover:bg-red-50 transition-colors self-start sm:self-auto cursor-pointer"
-            >
-              Cerrar Sesión
-            </button>
+            <div className="flex items-center gap-3 self-start sm:self-auto">
+              <Link
+                to="/"
+                className="px-6 py-2.5 bg-white border border-slate-200 shadow-xs rounded-full text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Volver al Inicio
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2.5 bg-white border border-slate-200 shadow-xs rounded-full text-xs font-bold text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -286,17 +296,17 @@ const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
           </button>
         </div>
 
-{view === "create" && (
-  <ProductFormModal
-    product={null}
-    selectedStoreId={selectedStore.id}
-    onClose={() => setView("inventory")} // 👈 Agrega esta prop
-    onSuccess={() => {
-      setView("inventory");
-      loadInventory(selectedStore.id);
-    }}
-  />
-)}
+        {view === "create" && (
+          <ProductFormModal
+            product={null}
+            selectedStoreId={selectedStore.id}
+            onClose={() => setView("inventory")} // 👈 Agrega esta prop
+            onSuccess={() => {
+              setView("inventory");
+              loadInventory(selectedStore.id);
+            }}
+          />
+        )}
         {view === "inventory" && (
           <InventoryList
             inventory={inventory}
