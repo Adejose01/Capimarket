@@ -2,24 +2,88 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Plus, Edit2, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
-import useCategories from "@/hooks/dashboard/useCategories";
+import { CategoriesService } from "@/lib/services/pb/categories.service";
 import { ProductsService } from "@/lib/services/pb/products.service";
-// eslint-disable-next-line no-unused-vars
-import { motion } from "framer-motion";
+import type {
+  ProductRecord,
+  CategoryRecord,
+  ProductInput,
+  ProductCondition,
+} from "@/lib/types/pocketbase";
+
+interface NewProductImage {
+  file: File;
+  preview: string;
+}
+
+interface ProductFormModalProps {
+  product?: ProductRecord | null;
+  selectedStoreId: string;
+  onClose?: () => void;
+  onSuccess: () => void;
+}
 
 export default function ProductFormModal({
   product,
   selectedStoreId,
   onClose,
   onSuccess,
-}) {
-  const [isUploading, setIsUploading] = useState(false);
-  const { categories } = useCategories();
+}: ProductFormModalProps) {
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true);
+
+  // Obtener el ID de la categoría (manejando posible objeto expandido)
+  const initialCategoryId =
+    typeof product?.category === "object"
+      ? (product.category as CategoryRecord)?.id
+      : product?.category || "";
+
+  const [selectedCategory, setSelectedCategory] =
+    useState<string>(initialCategoryId);
 
   // Images state
-  const [newProductImages, setNewProductImages] = useState([]);
-  const [imagesToDelete, setImagesToDelete] = useState([]);
+  const [newProductImages, setNewProductImages] = useState<NewProductImage[]>(
+    [],
+  );
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
 
+  // Sincronizar el ID de la categoría si el producto cambia
+  useEffect(() => {
+    const categoryId =
+      typeof product?.category === "object"
+        ? (product.category as CategoryRecord)?.id
+        : product?.category || "";
+
+    setSelectedCategory(categoryId);
+  }, [product]);
+
+  // Cargar todas las categorías disponibles
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      try {
+        const data = await CategoriesService.getAllCategories();
+        if (isMounted) {
+          setCategories(data);
+        }
+      } catch (error) {
+        console.error("Error cargando categorías:", error);
+        toast.error("No se pudieron cargar las categorías");
+      } finally {
+        if (isMounted) {
+          setIsLoadingCategories(false);
+        }
+      }
+    };
+
+    fetchCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Limpieza de ObjectURLs
   useEffect(() => {
     return () => {
       newProductImages.forEach((img) => {
@@ -28,10 +92,10 @@ export default function ProductFormModal({
     };
   }, [newProductImages]);
 
-  const handleAddImages = (e) => {
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      const newImages = filesArray.map((file) => ({
+      const newImages: NewProductImage[] = filesArray.map((file) => ({
         file,
         preview: URL.createObjectURL(file),
       }));
@@ -39,28 +103,30 @@ export default function ProductFormModal({
     }
   };
 
-  const handleRemoveImage = (index) => {
+  const handleRemoveImage = (index: number) => {
     setNewProductImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsUploading(true);
 
-    const formElement = e.target;
+    const formElement = e.currentTarget;
     const formData = new FormData(formElement);
 
-    // Mapeo controlado y limpio de los datos del formulario
-    const productPayload = {
-      name: formData.get("name"),
-      price: parseFloat(formData.get("price")) || 0,
-      category: formData.get("category"),
-      brand: formData.get("brand") || "",
-      condition: formData.get("condition"),
-      stock: formData.get("stock"),
-      listed: formData.get("listed") === "true", // Conversión limpia a booleano
-      description: formData.get("description") || "",
+    const productPayload: ProductInput = {
       storeId: selectedStoreId,
+      name: formData.get("name") as string,
+      price: parseFloat(formData.get("price") as string) || 0,
+      category: selectedCategory,
+      brand: (formData.get("brand") as string) || "",
+      condition: ((formData.get("condition") as string) ||
+        "new") as ProductCondition,
+      stock: ((formData.get("stock") as string) || "available") as
+        | "available"
+        | "out_of_stock",
+      listed: formData.get("listed") === "true",
+      description: (formData.get("description") as string) || "",
       newImages: newProductImages.map((img) => img.file),
       imagesToDelete: imagesToDelete,
     };
@@ -82,7 +148,7 @@ export default function ProductFormModal({
     }
   };
 
-  const isModal = !!onClose; // if onClose is provided, it acts as modal
+  const isModal = !!onClose;
 
   const content = (
     <div
@@ -94,8 +160,9 @@ export default function ProductFormModal({
     >
       {isModal && (
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-6 right-6 text-slate-400 hover:text-slate-900"
+          className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 cursor-pointer"
         >
           <X size={24} />
         </button>
@@ -142,7 +209,6 @@ export default function ProductFormModal({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Visibilidad en lugar de Categoría */}
           <div>
             <label className="text-xs font-bold text-slate-500 mb-2 block">
               Visibilidad
@@ -203,19 +269,20 @@ export default function ProductFormModal({
           </div>
         </div>
 
-        {/* Categoría ahora está donde antes estaba Visibilidad */}
         <div>
           <label className="text-xs font-bold text-slate-500 mb-2 block">
             Categoría
           </label>
           <select
             name="category"
-            defaultValue={product?.category || ""}
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             required
-            className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 cursor-pointer appearance-none shadow-sm"
+            disabled={isLoadingCategories}
+            className="w-full bg-white border border-slate-200 rounded-full px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 cursor-pointer appearance-none shadow-sm disabled:opacity-50"
           >
             <option value="" disabled>
-              Selecciona...
+              {isLoadingCategories ? "Cargando categorías..." : "Selecciona..."}
             </option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -231,7 +298,7 @@ export default function ProductFormModal({
           </label>
           <textarea
             name="description"
-            rows="3"
+            rows={3}
             defaultValue={product?.description}
             placeholder="Especificaciones, lo que incluye en la caja..."
             className="w-full bg-white border border-slate-200 rounded-3xl px-6 py-4 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all text-slate-900 resize-none shadow-sm"
@@ -252,7 +319,11 @@ export default function ProductFormModal({
                   return (
                     <div
                       key={filename}
-                      className={`relative aspect-square rounded-xl overflow-hidden border-2 group transition-all ${isMarked ? "opacity-30 grayscale border-red-300" : "border-slate-100 hover:border-slate-300"}`}
+                      className={`relative aspect-square rounded-xl overflow-hidden border-2 group transition-all ${
+                        isMarked
+                          ? "opacity-30 grayscale border-red-300"
+                          : "border-slate-100 hover:border-slate-300"
+                      }`}
                     >
                       <img
                         src={getImageUrl(product, filename, "200x200")}
@@ -267,7 +338,7 @@ export default function ProductFormModal({
                               prev.filter((f) => f !== filename),
                             )
                           }
-                          className="absolute inset-0 bg-red-400/20 flex items-center justify-center text-red-600 font-extrabold text-[9px] uppercase tracking-widest"
+                          className="absolute inset-0 bg-red-400/20 flex items-center justify-center text-red-600 font-extrabold text-[9px] uppercase tracking-widest cursor-pointer"
                         >
                           Deshacer
                         </button>
@@ -277,7 +348,7 @@ export default function ProductFormModal({
                           onClick={() =>
                             setImagesToDelete((prev) => [...prev, filename])
                           }
-                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:bg-red-600"
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:bg-red-600 cursor-pointer"
                         >
                           <X size={11} />
                         </button>
@@ -299,11 +370,15 @@ export default function ProductFormModal({
                 key={idx}
                 className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 group"
               >
-                <img src={img.preview} className="w-full h-full object-cover" />
+                <img
+                  src={img.preview}
+                  alt={`Nueva previsualización ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-slate-900 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shadow-md"
+                  className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-slate-900 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shadow-md cursor-pointer"
                 >
                   <X size={12} />
                 </button>
@@ -338,7 +413,7 @@ export default function ProductFormModal({
           <button
             type="submit"
             disabled={isUploading}
-            className="px-8 py-4 bg-slate-900 text-white rounded-full text-sm font-bold hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-premium hover:-translate-y-0.5 text-center"
+            className="px-8 py-4 bg-slate-900 text-white rounded-full text-sm font-bold hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-premium hover:-translate-y-0.5 text-center cursor-pointer"
           >
             {isUploading
               ? "Guardando..."
