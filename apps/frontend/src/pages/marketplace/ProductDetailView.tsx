@@ -11,7 +11,7 @@ import pb from "@/lib/pocketbase";
 import { getImageUrl, formatWhatsAppNumber, SPRING_SLOW } from "@/lib/utils";
 import PriceDisplay from "@/components/common/PriceDisplay";
 import { motion } from "framer-motion";
-import type { ProductRecord } from "@/lib/types/pocketbase"; // Ajusta la ruta a tu archivo de tipos
+import type { ProductRecord } from "@/lib/types/pocketbase";
 
 export default function ProductDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +28,11 @@ export default function ProductDetailView() {
     const fetchProduct = async () => {
       if (!id) return;
       try {
-        const record = await pb.collection("products").getOne<ProductRecord>(id, {
-          expand: "store,category",
-        });
+        const record = await pb
+          .collection("products")
+          .getOne<ProductRecord>(id, {
+            expand: "store,category",
+          });
         setProduct(record);
       } catch (error) {
         console.error(error);
@@ -45,12 +47,16 @@ export default function ProductDetailView() {
 
   const anteriorImagen = useCallback(() => {
     if (totalImagenes <= 1) return;
-    setImagenSeleccionada((prev) => (prev === 0 ? totalImagenes - 1 : prev - 1));
+    setImagenSeleccionada((prev) =>
+      prev === 0 ? totalImagenes - 1 : prev - 1,
+    );
   }, [totalImagenes]);
 
   const siguienteImagen = useCallback(() => {
     if (totalImagenes <= 1) return;
-    setImagenSeleccionada((prev) => (prev === totalImagenes - 1 ? 0 : prev + 1));
+    setImagenSeleccionada((prev) =>
+      prev === totalImagenes - 1 ? 0 : prev + 1,
+    );
   }, [totalImagenes]);
 
   // Navegación con teclado
@@ -90,7 +96,7 @@ export default function ProductDetailView() {
     const nombreTienda = product.expand?.store?.name || "Tienda";
     const precio = (product.price / 100).toFixed(2);
 
-    const mensaje = `Hola ${nombreTienda}, vi el *${product.name}* publicado en CapiMercado por *${precio} USDT*. ¿Aún disponible?`;
+    const mensaje = `Hola ${nombreTienda}, vi el *${product.name}* publicado en CapiMercado por *${precio}*.`;
 
     try {
       pb.collection("orders")
@@ -107,7 +113,7 @@ export default function ProductDetailView() {
 
     window.open(
       `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`,
-      "_blank"
+      "_blank",
     );
   };
 
@@ -190,7 +196,7 @@ export default function ProductDetailView() {
                   src={getImageUrl(
                     product,
                     product.images?.[imagenSeleccionada],
-                    "800x800"
+                    "800x800",
                   )}
                   alt={product.name}
                   className="w-full h-full object-cover"
@@ -252,7 +258,7 @@ export default function ProductDetailView() {
                   }}
                   onClick={() =>
                     navigate(
-                      `/stores/${product.expand?.store?.slug || product.expand?.store?.id}`
+                      `/stores/${product.expand?.store?.slug || product.expand?.store?.id}`,
                     )
                   }
                 >
@@ -270,7 +276,7 @@ export default function ProductDetailView() {
                   Tienda miembro desde{" "}
                   {new Date(product.expand.store.created).toLocaleDateString(
                     "es",
-                    { month: "long", year: "numeric" }
+                    { month: "long", year: "numeric" },
                   )}
                 </p>
               )}
@@ -286,43 +292,79 @@ export default function ProductDetailView() {
                 />
               </div>
 
-              <div className="mb-8 p-6 bg-slate-50 dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5">
-                <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-1">
-                  Condición
-                </p>
-                <p className="text-lg font-medium text-slate-800 dark:text-slate-200 mb-6 pb-6 border-b border-slate-200 dark:border-white/10">
-                  {product.condition === "new"
-                    ? "✨ Nuevo Sellado"
-                    : product.condition === "open_box"
-                    ? "📂 Abierto (Open Box)"
-                    : "📦 Usado"}
-                </p>
+              <div className="mb-8 p-6 bg-slate-50 dark:bg-[#111] rounded-2xl border border-slate-100 dark:border-white/5 space-y-6">
+                {/* 1. Condición */}
+                <div className="pb-6 border-b border-slate-200 dark:border-white/10">
+                  <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-1">
+                    Condición
+                  </p>
+                  <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+                    {product.condition === "new"
+                      ? "✨ Nuevo Sellado"
+                      : product.condition === "open_box"
+                        ? "📂 Abierto (Open Box)"
+                        : "📦 Usado"}
+                  </p>
+                </div>
 
-                <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-2">
-                  Descripción
-                </p>
-                <div
-                  className={`text-base leading-relaxed whitespace-pre-line ${
-                    product.description
-                      ? "text-slate-700 dark:text-slate-200"
-                      : "text-orange-600 dark:text-slate-400 font-medium"
-                  }`}
-                >
-                  {product.description || "[ Sin descripción ]"}
+                {/* 2. Stock */}
+                <div className="pb-6 border-b border-slate-200 dark:border-white/10">
+                  <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-2">
+                    Stock
+                  </p>
+                  <div>
+                    {isOutOfStock ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 text-xs font-bold uppercase tracking-wider">
+                        ❌ Agotado
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                        ✅ Disponible
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Marca (if exist) */}
+                {product.brand && (
+                  <div className="pb-6 border-b border-slate-200 dark:border-white/10">
+                    <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-1">
+                      Marca
+                    </p>
+                    <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+                      {product.brand}
+                    </p>
+                  </div>
+                )}
+
+                {/* 4. Descripción */}
+                <div>
+                  <p className="font-bold text-sm text-slate-500 uppercase tracking-widest mb-2">
+                    Descripción
+                  </p>
+                  <div
+                    className={`text-base leading-relaxed whitespace-pre-line ${
+                      product.description
+                        ? "text-slate-700 dark:text-slate-200"
+                        : "text-orange-600 dark:text-slate-400 font-medium"
+                    }`}
+                  >
+                    {product.description || "[ Sin descripción ]"}
+                  </div>
                 </div>
               </div>
 
+              {/* CTA Desktop */}
               <div className="hidden md:flex flex-col gap-3 mt-auto">
                 <button
                   onClick={contactarWhatsApp}
-                  disabled={isOutOfStock}
-                  className="w-full bg-[#050505] hover:bg-[#1a1a1a] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-[#FDFBF7] font-bold py-4 px-8 rounded-full shadow-premium flex items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 text-lg cursor-pointer"
+                  className="w-full bg-[#050505] hover:bg-[#1a1a1a] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-[#FDFBF7] font-bold py-4 px-8 rounded-full shadow-premium flex items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 text-lg cursor-pointer"
                 >
                   <MessageCircle
                     size={22}
                     className="text-emerald-400 dark:text-emerald-600"
                   />
-                  {isOutOfStock ? "Agotado" : "Comprar por WhatsApp"}
+                  Comprar por WhatsApp
                 </button>
               </div>
             </div>
@@ -333,14 +375,13 @@ export default function ProductDetailView() {
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-110 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 px-4 py-3 safe-area-bottom shadow-2xl shadow-black/20">
           <button
             onClick={contactarWhatsApp}
-            disabled={isOutOfStock}
-            className="w-full bg-[#050505] dark:bg-white dark:text-slate-900 text-white font-bold py-3.5 px-4 rounded-full flex items-center justify-center gap-2 text-sm disabled:opacity-50 active:scale-95 transition-transform cursor-pointer"
+            className="w-full bg-[#050505] dark:bg-white dark:text-slate-900 text-white font-bold py-3.5 px-4 rounded-full flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform cursor-pointer"
           >
             <MessageCircle
               size={18}
               className="text-emerald-400 dark:text-emerald-600"
             />
-            {isOutOfStock ? "Agotado" : "Comprar por WhatsApp"}
+            Comprar por WhatsApp
           </button>
         </div>
       </motion.div>
