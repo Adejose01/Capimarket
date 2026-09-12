@@ -129,7 +129,7 @@ export default function AboutView(): React.JSX.Element {
         </div>
       </main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }

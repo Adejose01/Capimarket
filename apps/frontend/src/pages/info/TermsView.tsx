@@ -132,7 +132,7 @@ export default function TermsView(): React.JSX.Element {
         </div>
       </main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }

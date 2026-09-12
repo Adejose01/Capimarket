@@ -488,7 +488,7 @@ export default function ContactView() {
         </div>
       </main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }

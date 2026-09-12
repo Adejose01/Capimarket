@@ -136,7 +136,7 @@ export default function PrivacyView(): React.JSX.Element {
         </div>
       </main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }

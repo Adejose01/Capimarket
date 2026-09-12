@@ -2,7 +2,6 @@ import React from "react";
 import { Routes, Route, useLocation, Location } from "react-router-dom";
 import AuthView from "@/pages/auth/AuthView";
 // dashboard
-import SuperAdminView from "@/pages/dashboard/admin/SuperAdminView";
 import BuyerPortalView from "@/pages/dashboard/buyer/BuyerPortalView";
 import SellerPortalView from "@/pages/dashboard/seller/SellerPortalView";
 // Footer Links
@@ -42,10 +41,6 @@ export default function App(): React.JSX.Element {
         <Route path="/store/:slug" element={<MarketplaceView />} />
         <Route path="/producto/:id" element={<ProductDetailView />} />
         <Route path="/panel" element={<SellerPortalView />} />
-        <Route
-          path="/admin-control-valencia-2026"
-          element={<SuperAdminView />}
-        />
 
         {/* Footer Links */}
         <Route path="/privacy" element={<PrivacyView />} />

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
 
 interface SafeImageProps {
-  src: string | null;
+  src: string | null | undefined;
   alt: string;
   className?: string;
   fallbackIcon?: React.ReactNode;

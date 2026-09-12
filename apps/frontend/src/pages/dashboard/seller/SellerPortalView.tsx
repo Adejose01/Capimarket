@@ -8,7 +8,7 @@ import SafeImage from "@/components/common/SafeImage";
 import BrandSettings from "@/components/features/seller/BrandSettings";
 import InventoryList from "@/components/features/seller/InventoryList";
 import ProductFormModal from "@/components/features/seller/ProductFormModal";
-import { ApplyStoreModal } from "@/components/features/buyer/ApplyStoreModal"; // Asegúrate de ajustar esta ruta según tu estructura
+import { ApplyStoreModal } from "@/components/features/buyer/ApplyStoreModal";
 import { StoreService } from "@/lib/services/pb/store.service";
 import { ProductsService } from "@/lib/services/pb/products.service";
 // eslint-disable-next-line no-unused-vars
@@ -62,10 +62,10 @@ export default function SellerPortalView() {
       });
   }, [user?.id]);
 
-  const loadInventory = (id) => {
-    if (!id) return;
+  const loadInventory = (storeId: string) => {
+    if (!storeId) return;
 
-    ProductsService.getProductsByStoreId(id)
+    ProductsService.getProductsByStoreId(storeId)
       .then((records) => {
         setInventory(records);
       })
@@ -83,7 +83,6 @@ export default function SellerPortalView() {
     loadStores();
   }, [isAuthenticated, navigate, loadStores]);
 
-  if (!isAuthenticated) return null;
   if (!isAuthenticated || !user) return null;
 
   if (isLoadingStore) {
@@ -176,7 +175,7 @@ export default function SellerPortalView() {
                   setIsApplyModalOpen(true);
                 }
               }}
-              className={`p-6 rounded-4xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-3 transition-all min-h-45 ${
+              className={`p-6 rounded-4xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-3 transition-all min-h-[190px] ${
                 canAddMoreStores
                   ? "bg-white border-slate-200 hover:border-slate-900 shadow-xs hover:shadow-lg cursor-pointer hover:-translate-y-1 group"
                   : "bg-slate-100/60 border-slate-200 cursor-not-allowed opacity-60"
@@ -222,7 +221,7 @@ export default function SellerPortalView() {
         />
       )}
 
-      <div className="max-w-350 mx-auto">
+      <div className="max-w-3xl mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-slate-100/50">
           <div className="flex items-center gap-6">
             {selectedStore.logo && (

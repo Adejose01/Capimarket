@@ -141,7 +141,7 @@ export default function FaqView(): React.JSX.Element {
         </div>
       </main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }
