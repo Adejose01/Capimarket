@@ -1,6 +1,14 @@
 import React from "react";
 
-export default function PriceDisplay({ amount, className = "" }) {
+interface PriceDisplayProps {
+  amount: number | string;
+  className?: string;
+}
+
+export default function PriceDisplay({
+  amount,
+  className = "",
+}: PriceDisplayProps) {
   const numericAmount = (Number(amount) || 0) / 100;
 
   // Format to standard US currency e.g., 1,500.00
