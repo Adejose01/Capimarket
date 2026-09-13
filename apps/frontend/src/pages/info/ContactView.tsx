@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Mail,
@@ -18,20 +18,21 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
-import pb from "@/lib/pocketbase";
 import { contactService } from "@/lib/services/pb/contact.service";
+import useAuthStore from "@/lib/useAuthStore";
 import type { ContactTicket } from "@/lib/types/pocketbase";
 
 export default function ContactView() {
   const navigate = useNavigate();
-  const currentUser = pb.authStore.record;
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuthStore();
 
   // Control de pestañas
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
 
   // Estado del Formulario
   const [formData, setFormData] = useState({
-    name: currentUser?.name || "",
+    name: user?.name || "",
     reasonOption: "sugerencia",
     customReason: "",
     message: "",
@@ -47,23 +48,23 @@ export default function ContactView() {
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
 
   const fetchTickets = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!isAuthenticated) return;
     setIsLoadingTickets(true);
     try {
-      const data = await contactService.getByUser(currentUser.id);
+      const data = await contactService.getByUser(user?.id ?? "");
       setTickets(data);
     } catch (error) {
       console.error("Error al cargar los tickets:", error);
     } finally {
       setIsLoadingTickets(false);
     }
-  }, [currentUser?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (currentUser?.id) {
+    if (isAuthenticated) {
       fetchTickets();
     }
-  }, [currentUser?.id, fetchTickets]);
+  }, [isAuthenticated, fetchTickets]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -80,8 +81,8 @@ export default function ContactView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!currentUser?.id) {
-      setErrorMessage("Debes estar autenticado para enviar una solicitud.");
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { from: location.pathname } });
       return;
     }
 
@@ -95,7 +96,7 @@ export default function ContactView() {
 
     try {
       await contactService.create({
-        user: currentUser.id,
+        user: user?.id ?? "",
         name: formData.name.trim(),
         reason: finalReason,
         message: formData.message.trim(),
@@ -103,7 +104,7 @@ export default function ContactView() {
 
       setIsSuccess(true);
       setFormData({
-        name: currentUser?.name || "",
+        name: user?.name || "",
         reasonOption: "sugerencia",
         customReason: "",
         message: "",
@@ -241,7 +242,7 @@ export default function ContactView() {
                           Cuenta vinculada
                         </p>
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-200 truncate">
-                          {currentUser?.email || "Sin correo asociado"}
+                          {user?.email || "Sin correo asociado"}
                         </p>
                       </div>
                       <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[11px] font-bold">

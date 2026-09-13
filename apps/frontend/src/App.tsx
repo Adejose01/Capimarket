@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, useLocation, Location } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate, Location } from "react-router-dom";
 import AuthView from "@/pages/auth/AuthView";
 // dashboard
 import BuyerPortalView from "@/pages/dashboard/buyer/BuyerPortalView";
@@ -20,6 +20,7 @@ import StoreCatalogView from "@/pages/store/StoreCatalogView";
 import NotFoundView from "@/pages/info/NotFoundView";
 // Components
 import ErrorBoundary from "@/components/common/ErrorBoundary";
+import pb from "@/lib/pocketbase";
 
 // Tipamos el state que le pasas al router cuando abres un producto como modal
 interface LocationState {
@@ -28,12 +29,19 @@ interface LocationState {
 
 export default function App(): React.JSX.Element {
   const location = useLocation();
-  const state = location.state as LocationState | null;
-  const background = state?.background;
+  const navigate = useNavigate();
+  const isAuthenticated = pb.authStore.isValid;
+
+  // Verificar si el usuario intenta acceder a /contact sin estar autenticado
+  React.useEffect(() => {
+    if (location.pathname === "/contact" && !isAuthenticated) {
+      navigate("/auth", { state: { from: location.pathname } });
+    }
+  }, [location.pathname, isAuthenticated, navigate]);
 
   return (
     <ErrorBoundary>
-      <Routes location={background || location}>
+      <Routes>
         <Route path="/" element={<MarketplaceView />} />
         <Route path="/auth" element={<AuthView />} />
         <Route path="/account" element={<BuyerPortalView />} />
@@ -54,8 +62,8 @@ export default function App(): React.JSX.Element {
         <Route path="*" element={<NotFoundView />} />
       </Routes>
 
-      {/* Renderiza el modal sobre la vista principal si existe background */}
-      {background && (
+      {/* Renderiza el modal sobre la vista principal si existe state */}
+      {location.state && (
         <Routes>
           <Route path="/producto/:id" element={<ProductDetailView />} />
         </Routes>
