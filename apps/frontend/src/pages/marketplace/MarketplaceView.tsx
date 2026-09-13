@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+
 import { getImageUrl } from "@/lib/utils";
 import Navbar from "@/components/common/Navbar";
 import HeroCinematic from "@/components/HeroCinematic";
@@ -9,24 +11,39 @@ import ProductGrid from "@/components/features/marketplace/ProductGrid";
 import FilterPanel from "@/components/features/marketplace/FilterPanel";
 import AppliedFilterChips from "@/components/features/marketplace/AppliedFilterChips";
 import StoreGrid from "@/components/features/marketplace/StoreGrid";
-import useDebounce from "@/hooks/useDebounce";
 import Footer from "@/components/common/Footer";
-// eslint-disable-next-line no-unused-vars
-import { motion } from "framer-motion";
-
-// Hooks
+import useDebounce from "@/hooks/useDebounce";
 import { useMarketplaceFilters } from "@/hooks/marketplace/useMarketplaceFilters";
 import { useMarketplaceData } from "@/hooks/marketplace/useMarketplaceData";
+import type { FilterAction } from "@/hooks/marketplace/useMarketplaceFilters";
+
+// ============================================================================
+// INTERFACES Y TYPES
+// ============================================================================
+
+interface MarketplaceViewProps {
+  exclusiveStoreId?: string;
+  exclusiveStoreSlug?: string;
+}
+
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 
 export default function MarketplaceView({
-  exclusiveStoreId = null,
-  exclusiveStoreSlug = null,
-}) {
+  exclusiveStoreId,
+  exclusiveStoreSlug,
+}: MarketplaceViewProps) {
   const navigate = useNavigate();
 
   // 1. Estados de Filtros desestructurados + Helpers del Hook
-  const { filterState, dispatch, setFilter, resetFilters } =
+  const { filterState, dispatch: originalDispatch, setFilter, resetFilters } =
     useMarketplaceFilters();
+
+  // Wrapper para dispatch compatible con CatalogHeader
+  const dispatch = (action: FilterAction) => {
+    originalDispatch(action);
+  };
 
   const {
     activeCategory,
@@ -46,7 +63,7 @@ export default function MarketplaceView({
   });
 
   // 3. Buscador
-  const [searchType, setSearchType] = useState("products");
+  const [searchType, setSearchType] = useState<"products" | "stores">("products");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(
     searchTerm,
@@ -70,7 +87,7 @@ export default function MarketplaceView({
     debouncedSearchTerm,
   });
 
-  const catalogRef = useRef(null);
+  const catalogRef = useRef<HTMLElement | null>(null);
 
   // Auto-scroll al buscar
   useEffect(() => {
@@ -89,8 +106,6 @@ export default function MarketplaceView({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // [ CATEGORIAS DISPONIBLES ]
-
   // Listas Dinámicas — Categorías Raíz
   // const availableCategories = useMemo(() => {
   //   if (!categories || categories.length === 0) return ["Todos"];
@@ -103,10 +118,10 @@ export default function MarketplaceView({
   //   return list;
   // }, [categories, activeCategory]);
 
-  const availableLocations = [
-    "all",
-    ...new Set(stores?.map((s) => s.location).filter(Boolean)),
-  ];
+  const availableLocations = useMemo(
+    () => ["all", ...(stores?.map((s) => s.location).filter(Boolean) ?? [])] as string[],
+    [stores]
+  );
 
   const filteredStores = useMemo(
     () =>
@@ -272,8 +287,11 @@ export default function MarketplaceView({
                 <ProductGrid
                   products={filteredProducts}
                   isLoading={isLoading}
-                  activeStoreName={activeStore ? activeStore.name : null}
+                  activeStoreName={activeStore?.name}
                   getImageUrl={getImageUrl}
+                  onSelectProduct={(product) =>
+                    navigate(`/products/${product.id}`)
+                  }
                   currentPage={currentPage}
                   totalPages={totalPages}
                   setPage={(page) =>
@@ -286,7 +304,7 @@ export default function MarketplaceView({
         )}
       </motion.main>
 
-      <Footer />
+      <Footer navigate={navigate} />
     </div>
   );
 }

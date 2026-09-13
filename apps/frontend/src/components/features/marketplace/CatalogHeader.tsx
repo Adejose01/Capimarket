@@ -1,5 +1,6 @@
 import React from "react";
 import { Filter } from "lucide-react";
+import type { FilterAction } from "@/hooks/marketplace/useMarketplaceFilters";
 
 interface CatalogHeaderProps {
   searchType: "products" | "stores" | string;
@@ -7,7 +8,7 @@ interface CatalogHeaderProps {
   sortOrder: string;
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
-  dispatch: (action: { type: string; payload: { key: string; value: unknown } }) => void;
+  dispatch: (action: FilterAction) => void;
 }
 
 export default function CatalogHeader({

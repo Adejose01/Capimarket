@@ -13,7 +13,7 @@ const INITIAL_STATE = {
 };
 
 // Definimos un tipo estricto para las acciones del reducer (Muy útil en TS)
-type FilterAction =
+export type FilterAction =
   | { type: "SET_FILTER"; payload: { key: string; value: any } }
   | { type: "SET_PAGE"; payload: number }
   | { type: "RESET_FILTERS" }
