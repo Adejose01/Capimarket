@@ -6,6 +6,9 @@ package-lock.json
 # Datos persistentes de bases de datos locales
 pb/pb_data
 postgres-data
+*.db
+*.sqlite
+*.sqlite3
 
 # Entorno de desarrollo
 .devcontainer
@@ -16,7 +19,44 @@ postgres-data
 # Archivos de configuración locales sensibles
 .env
 .env.local
+.env.*.local
+.env.production
+.env.pb_password
 
-# Salidas de compilación locales
+# Archivos de construcción y temporales
 dist
 build
+*.log
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE/editor
+.idea
+*.swp
+*.swo
+*~
+.vscode
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de Docker
+docker-compose.override.yml
+*.tar
+Dockerfile.*
+
+# Archivos de producción (no deben estar en Docker)
+deploy/docker-compose.prod.yml
+deploy/README.md
+.env.production.example
+.env.pb_password
+.env.production
+
+# Archivos de test
+coverage
+.nyc_output
+test-results
+
+# Archivos de scripts y herramientas
+scripts/*
+*.test.js
+*.spec.js
